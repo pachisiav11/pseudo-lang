@@ -1,0 +1,12 @@
+node_modules/
+dist/
+out/
+*.tsbuildinfo
+*.vsix
+.vscode-test/
+coverage/
+
+# The Cambridge pseudocode guide is copyright Cambridge University Press &
+# Assessment. It is kept locally as the reference spec but not redistributed.
+*.pdf
+guide.txt
