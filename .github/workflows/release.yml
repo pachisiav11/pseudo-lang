@@ -35,16 +35,27 @@ jobs:
             echo "tag $tag does not match packages/vscode/package.json version $manifest" >&2
             exit 1
           fi
+          echo "VERSION=$tag" >> "$GITHUB_ENV"
 
       - uses: softprops/action-gh-release@v2
         with:
           files: packages/vscode/*.vsix
           generate_release_notes: true
           body: |
-            Download the `.vsix` below, then install it with:
+            ## Install
 
-            ```
-            code --install-extension pseudo-lang-${{ github.ref_name }}.vsix
-            ```
+            You need [Visual Studio Code](https://code.visualstudio.com/) and
+            [Node.js 20 or later](https://nodejs.org/). Both are free.
 
-            Or drag the file into the Extensions view in VS Code.
+            1. Download **`pseudo-lang-${{ env.VERSION }}.vsix`** from the Assets list below.
+            2. Open VS Code and press `Ctrl` `Shift` `X` (`Cmd` `Shift` `X` on a Mac).
+            3. Click the `...` button at the top of that panel.
+            4. Choose **Install from VSIX...** and pick the file you downloaded.
+
+            Then make a file ending in `.pseudo` and press the **▷** button at the
+            top right of the editor to run it, or `F5` to debug it.
+
+            Prefer a terminal? `code --install-extension pseudo-lang-${{ env.VERSION }}.vsix`
+
+            Full instructions, including what to do if something goes wrong, are in
+            the [README](https://github.com/pachisiav11/pseudo-lang#install).

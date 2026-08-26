@@ -20,28 +20,95 @@ OUTPUT "The total is ", Total
 Because 9618 pseudocode is a superset of the pseudocode used at IGCSE, programs
 written for Cambridge IGCSE Computer Science 0478 also run unchanged.
 
-## Install the VS Code extension
+## Install
 
-There is no Marketplace listing. Build the `.vsix` yourself, or download it from
-the [releases page](https://github.com/pachisiav11/pseudo-lang/releases).
+You need two things, both free:
+
+1. **[Visual Studio Code](https://code.visualstudio.com/)**
+2. **[Node.js 20 or later](https://nodejs.org/)** — take the "LTS" download
+
+Then install the extension. It is not on the Marketplace, so you download one
+file and add it to VS Code by hand. It takes about a minute.
+
+### Step 1 — download the extension
+
+Go to the **[latest release](https://github.com/pachisiav11/pseudo-lang/releases/latest)**
+and download **`pseudo-lang-0.1.0.vsix`** from the Assets list at the bottom.
+
+Save it anywhere you like. Your Downloads folder is fine.
+
+### Step 2 — add it to VS Code
+
+Open VS Code, then:
+
+1. Press **`Ctrl` `Shift` `X`** (on a Mac, **`Cmd` `Shift` `X`**) to open the
+   Extensions view.
+2. Click the **`...`** button at the top of that panel.
+3. Choose **Install from VSIX...**
+4. Select the `.vsix` file you just downloaded.
+
+VS Code will say the extension was installed.
+
+<details>
+<summary>Or install it from a terminal instead</summary>
 
 ```bash
-pnpm install
-pnpm package
+code --install-extension pseudo-lang-0.1.0.vsix
 ```
 
-That writes `packages/vscode/pseudo-lang-<version>.vsix`. Install it with:
+Run this from the folder you saved the file in. On a Mac, if `code` is not
+recognised, open VS Code, press `Cmd` `Shift` `P`, and run
+**Shell Command: Install 'code' command in PATH** first.
 
-```bash
-code --install-extension packages/vscode/pseudo-lang-0.1.0.vsix
+</details>
+
+### Step 3 — check it worked
+
+Make a new file called **`hello.pseudo`** and type this in:
+
+```
+DECLARE Name : STRING
+
+OUTPUT "What is your name? "
+INPUT Name
+OUTPUT "Hello, ", Name
 ```
 
-Open any `.pseudo` file and press the ▷ button in the editor title bar to run it, or
-`F5` to debug it with breakpoints, stepping and a variables panel.
+The keywords should turn colour as you type. Then press the **▷ button** at the
+top right of the editor. A terminal opens, asks your name, and greets you.
+
+That is everything. You are set up.
+
+### Using it day to day
+
+| To do this | Press this |
+| --- | --- |
+| Run the open file | the **▷** button, top right |
+| Debug it — breakpoints, stepping, variables | **`F5`** |
+| Type the `←` arrow | **`Alt` `-`**, or just type `<-` and save |
+| See mistakes before running | save the file, then look at the Problems panel |
+
+You never have to type `←`. Type `<-` and it becomes `←` when you save.
+
+### If something goes wrong
+
+| What you see | What to do |
+| --- | --- |
+| `node: command not found` in the terminal | Node.js is not installed, or VS Code was open when you installed it. Install [Node.js](https://nodejs.org/), then close and reopen VS Code. |
+| No colours in a `.pseudo` file | Check the file really ends in `.pseudo`. Keywords only colour in **UPPER CASE** — a lower-case `if` staying grey means the keyword is wrong. |
+| The **▷** button is missing | The file is not recognised as pseudocode. Save it with a `.pseudo` ending. |
+
+The debugger (`F5`) runs inside VS Code and does not need Node.js. Only the
+**▷** Run button does.
 
 ## Use it from the command line
 
+The extension is not required — the interpreter runs on its own.
+
 ```bash
+git clone https://github.com/pachisiav11/pseudo-lang.git
+cd pseudo-lang
+pnpm install && pnpm build
 node packages/cli/dist/main.js run examples/grades.pseudo
 ```
 
@@ -114,6 +181,9 @@ pnpm install
 pnpm build
 pnpm test
 ```
+
+`pnpm package` builds the `.vsix` into `packages/vscode/`, if you would rather
+build it than download it.
 
 The suite has 324 tests. `tests/conformance/` holds one directory per example in
 the Cambridge guide, each with its program and its expected output;
