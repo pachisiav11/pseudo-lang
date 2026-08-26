@@ -10,3 +10,4 @@
 - Added: 2026-08-26 08:34 | Completed: 2026-08-26 09:14 | M6 - record, enumerated, pointer and set types, DEFINE, dot notation, address-of and dereference, 29 tests
 - Added: 2026-08-26 08:34 | Completed: 2026-08-26 09:22 | M7 - text files (READ/WRITE/APPEND, EOF) and random files (SEEK/GETRECORD/PUTRECORD), 22 tests
 - Added: 2026-08-26 08:34 | Completed: 2026-08-26 09:32 | M8 - CLASS, INHERITS, NEW, SUPER, PUBLIC/PRIVATE, dynamic dispatch, 24 tests
+- Added: 2026-08-26 08:34 | Completed: 2026-08-26 09:32 | M9 — VS Code extension: TextMate grammar, Run command, snippets, .vsix

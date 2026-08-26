@@ -1,0 +1,152 @@
+{
+  "assignment arrow": {
+    "prefix": "<-",
+    "body": ["← "],
+    "description": "The assignment operator"
+  },
+  "IF": {
+    "prefix": "if",
+    "body": ["IF ${1:condition} THEN", "\t$0", "ENDIF"],
+    "description": "IF statement"
+  },
+  "IF ELSE": {
+    "prefix": "ifelse",
+    "body": ["IF ${1:condition} THEN", "\t$2", "ELSE", "\t$0", "ENDIF"],
+    "description": "IF statement with an ELSE clause"
+  },
+  "FOR": {
+    "prefix": "for",
+    "body": ["FOR ${1:Index} ← ${2:1} TO ${3:10}", "\t$0", "NEXT ${1:Index}"],
+    "description": "Count-controlled loop. The counter fills in the NEXT for you."
+  },
+  "FOR STEP": {
+    "prefix": "forstep",
+    "body": ["FOR ${1:Index} ← ${2:10} TO ${3:1} STEP ${4:-1}", "\t$0", "NEXT ${1:Index}"],
+    "description": "Count-controlled loop with a step"
+  },
+  "WHILE": {
+    "prefix": "while",
+    "body": ["WHILE ${1:condition}", "\t$0", "ENDWHILE"],
+    "description": "Pre-condition loop"
+  },
+  "REPEAT": {
+    "prefix": "repeat",
+    "body": ["REPEAT", "\t$0", "UNTIL ${1:condition}"],
+    "description": "Post-condition loop"
+  },
+  "CASE": {
+    "prefix": "case",
+    "body": [
+      "CASE OF ${1:Identifier}",
+      "\t${2:value} : $3",
+      "\tOTHERWISE : $0",
+      "ENDCASE"
+    ],
+    "description": "CASE statement"
+  },
+  "PROCEDURE": {
+    "prefix": "proc",
+    "body": ["PROCEDURE ${1:Name}(${2})", "\t$0", "ENDPROCEDURE"],
+    "description": "Procedure definition"
+  },
+  "FUNCTION": {
+    "prefix": "func",
+    "body": [
+      "FUNCTION ${1:Name}(${2}) RETURNS ${3:INTEGER}",
+      "\t$0",
+      "\tRETURN ${4:value}",
+      "ENDFUNCTION"
+    ],
+    "description": "Function definition"
+  },
+  "DECLARE": {
+    "prefix": "dec",
+    "body": ["DECLARE ${1:Name} : ${2|INTEGER,REAL,CHAR,STRING,BOOLEAN,DATE|}"],
+    "description": "Variable declaration"
+  },
+  "DECLARE ARRAY": {
+    "prefix": "arr",
+    "body": [
+      "DECLARE ${1:Name} : ARRAY[${2:1}:${3:10}] OF ${4|INTEGER,REAL,CHAR,STRING,BOOLEAN,DATE|}"
+    ],
+    "description": "One-dimensional array declaration"
+  },
+  "DECLARE 2-D ARRAY": {
+    "prefix": "arr2",
+    "body": [
+      "DECLARE ${1:Name} : ARRAY[${2:1}:${3:3},${4:1}:${5:3}] OF ${6|INTEGER,REAL,CHAR,STRING,BOOLEAN,DATE|}"
+    ],
+    "description": "Two-dimensional array declaration"
+  },
+  "CONSTANT": {
+    "prefix": "const",
+    "body": ["CONSTANT ${1:Name} = ${2:value}"],
+    "description": "Constant declaration"
+  },
+  "TYPE record": {
+    "prefix": "type",
+    "body": ["TYPE ${1:Name}", "\tDECLARE ${2:Field} : ${3:STRING}", "ENDTYPE"],
+    "description": "Record type definition"
+  },
+  "TYPE enumerated": {
+    "prefix": "enum",
+    "body": ["TYPE ${1:Name} = (${2:First}, ${3:Second})"],
+    "description": "Enumerated type definition"
+  },
+  "TYPE pointer": {
+    "prefix": "ptr",
+    "body": ["TYPE ${1:Name} = ^${2:INTEGER}"],
+    "description": "Pointer type definition"
+  },
+  "TYPE set": {
+    "prefix": "set",
+    "body": ["TYPE ${1:Name} = SET OF ${2:CHAR}", "DEFINE ${3:Members} (${4:'A'}) : ${1:Name}"],
+    "description": "Set type definition and a set value"
+  },
+  "CLASS": {
+    "prefix": "class",
+    "body": [
+      "CLASS ${1:Name}",
+      "\tPRIVATE ${2:Field} : ${3:STRING}",
+      "\tPUBLIC PROCEDURE NEW(${4})",
+      "\t\t$0",
+      "\tENDPROCEDURE",
+      "ENDCLASS"
+    ],
+    "description": "Class definition"
+  },
+  "CLASS INHERITS": {
+    "prefix": "classinherits",
+    "body": [
+      "CLASS ${1:Name} INHERITS ${2:Parent}",
+      "\tPUBLIC PROCEDURE NEW(${3})",
+      "\t\tSUPER.NEW($4)",
+      "\t\t$0",
+      "\tENDPROCEDURE",
+      "ENDCLASS"
+    ],
+    "description": "Class definition with inheritance"
+  },
+  "read a text file": {
+    "prefix": "readfile",
+    "body": [
+      "DECLARE ${1:LineOfText} : STRING",
+      "OPENFILE \"${2:data.txt}\" FOR READ",
+      "WHILE NOT EOF(\"${2:data.txt}\")",
+      "\tREADFILE \"${2:data.txt}\", ${1:LineOfText}",
+      "\t$0",
+      "ENDWHILE",
+      "CLOSEFILE \"${2:data.txt}\""
+    ],
+    "description": "Read every line of a text file"
+  },
+  "write a text file": {
+    "prefix": "writefile",
+    "body": [
+      "OPENFILE \"${1:out.txt}\" FOR WRITE",
+      "WRITEFILE \"${1:out.txt}\", ${2:\"text\"}",
+      "CLOSEFILE \"${1:out.txt}\""
+    ],
+    "description": "Write to a text file"
+  }
+}

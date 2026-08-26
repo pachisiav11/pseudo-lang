@@ -558,6 +558,27 @@ export class Interpreter {
     return { method, obj: receiver.obj };
   }
 
+  /**
+   * Resolves an unqualified `Name(...)` written inside a method.
+   *
+   * The guide always spells method calls `Object.Method(...)` and gives no THIS
+   * or SELF keyword, so without this there is no way at all for one method to
+   * call another on the same object. Fields already resolve unqualified inside
+   * a method; methods follow the same rule, and shadow a global subprogram of
+   * the same name for the same reason a field does.
+   */
+  private ownMethod(name: string, span: Span): { method: ClassMethod; obj: ObjectValue } | undefined {
+    const current = this.receivers.at(-1);
+    if (current === undefined) return undefined;
+    // Dispatch on the object's actual class, so a subclass override wins.
+    const cls = this.classes.get(current.obj.className.toLowerCase());
+    if (cls === undefined) return undefined;
+    const method = findMethod(cls, name);
+    if (method === undefined) return undefined;
+    this.checkAccess(method.access, method.owner, name, 'method', span);
+    return { method, obj: current.obj };
+  }
+
   private async execMethodCallStmt(
     stmt: Extract<Stmt, { kind: 'MethodCallStmt' }>,
     scope: Scope,
@@ -890,6 +911,19 @@ export class Interpreter {
     stmt: Extract<Stmt, { kind: 'CallStmt' }>,
     scope: Scope,
   ): Promise<void> {
+    const own = this.ownMethod(stmt.callee, stmt.span);
+    if (own !== undefined) {
+      if (own.method.decl.returns !== undefined) {
+        throw this.error('E2082', stmt.span, {
+          message: `\`${own.method.decl.name}\` is a FUNCTION, so it cannot be called with CALL`,
+          label: 'a function, not a procedure',
+          help: `A function returns a value, so it is used inside an expression:\nOUTPUT ${own.method.decl.name}(...)`,
+        });
+      }
+      await this.invokeMethod(own.method, own.obj, stmt.args, scope, stmt.span);
+      return;
+    }
+
     const target = this.subprograms.get(stmt.callee.toLowerCase());
     if (target === undefined) {
       throw this.error('E3092', stmt.span, {
@@ -1388,6 +1422,24 @@ export class Interpreter {
       }
 
       case 'Call': {
+        const own = this.ownMethod(expr.callee, expr.span);
+        if (own !== undefined) {
+          if (own.method.decl.returns === undefined) {
+            throw this.error('E3105', expr.span, {
+              message: `\`${own.method.decl.name}\` is a PROCEDURE, so it has no value to use here`,
+              label: 'a procedure, not a function',
+              help: `Call it as a statement instead:\nCALL ${own.method.decl.name}(...)`,
+            });
+          }
+          const result = await this.invokeMethod(own.method, own.obj, expr.args, scope, expr.span);
+          if (result === undefined) {
+            throw this.error('E3095', expr.span, {
+              message: `\`${own.method.decl.name}\` did not return a value`,
+            });
+          }
+          return result;
+        }
+
         if (isBuiltin(expr.callee) && !this.subprograms.has(expr.callee.toLowerCase())) {
           const args: PValue[] = [];
           for (const arg of expr.args) args.push(await this.evaluate(arg, scope));

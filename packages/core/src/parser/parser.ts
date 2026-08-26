@@ -113,8 +113,12 @@ export class Parser {
     throw new StatementError();
   }
 
+  // `text` is the form to print in the message. It is only *matched* for
+  // keywords: every punctuation kind is already one-to-one with its spelling,
+  // and ASSIGN deliberately is not — it holds whichever of `<-` or `←` was
+  // typed, so matching on the text would reject the arrow the guide prints.
   private expect(kind: TokenKind, text: string, code: DiagCode = 'E2012'): Token {
-    if (this.check(kind, text)) return this.advance();
+    if (this.check(kind, kind === 'KEYWORD' ? text : undefined)) return this.advance();
 
     const tok = this.current;
     const miscased = tok.kind === 'IDENT' ? isMiscasedKeyword(tok.text) : null;

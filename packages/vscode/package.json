@@ -1,0 +1,102 @@
+{
+  "name": "pseudo-lang",
+  "displayName": "Pseudocode (Cambridge 9618)",
+  "description": "Run and debug the pseudocode defined in the Cambridge International AS & A Level Computer Science 9618 pseudocode guide.",
+  "version": "0.1.0",
+  "publisher": "pseudo-lang",
+  "license": "MIT",
+  "repository": { "type": "git", "url": "https://github.com/pachisiav11/pseudo-lang.git" },
+  "engines": { "vscode": "^1.90.0" },
+  "categories": ["Programming Languages", "Debuggers", "Education"],
+  "keywords": ["pseudocode", "cambridge", "9618", "0478", "igcse", "a level"],
+  "main": "./dist/extension.js",
+  "scripts": {
+    "build": "node esbuild.mjs",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "package": "node esbuild.mjs --production && vsce package --no-dependencies"
+  },
+  "dependencies": {
+    "@pseudo-lang/core": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.90.0",
+    "@vscode/vsce": "^3.2.1"
+  },
+  "contributes": {
+    "languages": [
+      {
+        "id": "pseudocode",
+        "aliases": ["Pseudocode", "pseudocode"],
+        "extensions": [".pseudo"],
+        "configuration": "./language-configuration.json",
+        "icon": { "light": "./icons/file-light.svg", "dark": "./icons/file-dark.svg" }
+      }
+    ],
+    "grammars": [
+      {
+        "language": "pseudocode",
+        "scopeName": "source.pseudocode",
+        "path": "./syntaxes/pseudocode.tmLanguage.json"
+      }
+    ],
+    "snippets": [{ "language": "pseudocode", "path": "./snippets/pseudocode.json" }],
+    "commands": [
+      { "command": "pseudoLang.run", "title": "Run File", "category": "Pseudocode", "icon": "$(play)" },
+      { "command": "pseudoLang.check", "title": "Check File", "category": "Pseudocode" },
+      { "command": "pseudoLang.insertArrow", "title": "Insert Assignment Arrow", "category": "Pseudocode" }
+    ],
+    "menus": {
+      "editor/title/run": [
+        { "command": "pseudoLang.run", "when": "resourceLangId == pseudocode", "group": "navigation@1" }
+      ],
+      "commandPalette": [
+        { "command": "pseudoLang.run", "when": "resourceLangId == pseudocode" },
+        { "command": "pseudoLang.check", "when": "resourceLangId == pseudocode" },
+        { "command": "pseudoLang.insertArrow", "when": "resourceLangId == pseudocode" }
+      ]
+    },
+    "keybindings": [
+      {
+        "command": "pseudoLang.insertArrow",
+        "key": "alt+-",
+        "when": "editorTextFocus && resourceLangId == pseudocode"
+      }
+    ],
+    "configuration": {
+      "title": "Pseudocode",
+      "properties": {
+        "pseudoLang.strictDeclarations": {
+          "type": "boolean",
+          "default": false,
+          "description": "Require DECLARE before a variable is used. The 9618 guide calls declaring good practice rather than compulsory, so this is off by default; turn it on for exam discipline."
+        },
+        "pseudoLang.insertArrowOnAssign": {
+          "type": "boolean",
+          "default": true,
+          "description": "Rewrite a typed `<-` into the `\u2190` character when the file is saved."
+        },
+        "pseudoLang.checkOnSave": {
+          "type": "boolean",
+          "default": true,
+          "description": "Report syntax problems in the Problems panel when a .pseudo file is saved."
+        },
+        "pseudoLang.maxCallDepth": {
+          "type": "number",
+          "default": 2000,
+          "description": "How deeply a subprogram may call itself before the run stops with a diagnostic."
+        },
+        "pseudoLang.randomFileRecordSize": {
+          "type": "number",
+          "default": 512,
+          "description": "Slot size in bytes for random-access files."
+        }
+      }
+    },
+    "configurationDefaults": {
+      "[pseudocode]": {
+        "editor.tabSize": 3,
+        "editor.insertSpaces": true
+      }
+    }
+  }
+}

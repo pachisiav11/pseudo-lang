@@ -1,0 +1,31 @@
+// A record type, an array of records, and BYREF.
+
+TYPE Student
+   DECLARE Name : STRING
+   DECLARE Mark : INTEGER
+ENDTYPE
+
+DECLARE Form : ARRAY[1:3] OF Student
+DECLARE Index : INTEGER
+DECLARE Best : Student
+
+// The guide says BYVAL/BYREF "need not be repeated", so it applies to every
+// parameter after it until the next one appears. Without the BYVAL here,
+// Name and Mark would be BYREF too and a literal could not be passed.
+PROCEDURE Enrol(BYREF Place : Student, BYVAL Name : STRING, Mark : INTEGER)
+   Place.Name ← Name
+   Place.Mark ← Mark
+ENDPROCEDURE
+
+CALL Enrol(Form[1], "Aisha", 71)
+CALL Enrol(Form[2], "Bruno", 88)
+CALL Enrol(Form[3], "Chen", 65)
+
+Best ← Form[1]
+FOR Index ← 2 TO 3
+   IF Form[Index].Mark > Best.Mark THEN
+      Best ← Form[Index]
+   ENDIF
+NEXT Index
+
+OUTPUT "Top of the form: ", Best.Name, " with ", Best.Mark

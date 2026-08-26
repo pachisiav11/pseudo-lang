@@ -1,0 +1,38 @@
+// Arrays, a count-controlled loop, CASE OF and a function.
+// Everything here is IGCSE 0478 material as well as 9618.
+
+CONSTANT ClassSize = 5
+
+DECLARE Marks : ARRAY[1:ClassSize] OF INTEGER
+DECLARE Index : INTEGER
+DECLARE Total : INTEGER
+
+FUNCTION GradeFor(Mark : INTEGER) RETURNS CHAR
+   IF Mark >= 80 THEN
+      RETURN 'A'
+   ELSE
+      IF Mark >= 60 THEN
+         RETURN 'B'
+      ELSE
+         IF Mark >= 40 THEN
+            RETURN 'C'
+         ELSE
+            RETURN 'U'
+         ENDIF
+      ENDIF
+   ENDIF
+ENDFUNCTION
+
+Marks[1] ← 91
+Marks[2] ← 74
+Marks[3] ← 58
+Marks[4] ← 40
+Marks[5] ← 12
+
+Total ← 0
+FOR Index ← 1 TO ClassSize
+   Total ← Total + Marks[Index]
+   OUTPUT "Candidate ", Index, ": ", Marks[Index], " grade ", GradeFor(Marks[Index])
+NEXT Index
+
+OUTPUT "Mean mark: ", Total / ClassSize

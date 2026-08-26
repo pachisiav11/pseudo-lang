@@ -1126,6 +1126,19 @@ Members declared with no access keyword are `PUBLIC`.
 - In an expression: `OUTPUT Player.GetAttempts()`.
 - Calling a procedure-method in expression position → `E3105`; using a function-method as a bare statement → `E3106`.
 
+**[DECISION]** An unqualified `Name(...)` written **inside a method body** resolves to a method of the current object if the object's class has one, and only otherwise to a global subprogram.
+
+The guide always spells method calls `Object.Method(...)`, and 9618 has no `THIS` or `SELF` keyword. Taken literally, that leaves no spelling at all for one method calling another on the same object — a program that any student would write, with no correct form to redirect them to. Since guide §10.1 already resolves *fields* unqualified inside a method (`Attempts ← Number`), methods follow the same rule, including the shadowing that implies.
+
+Resolution details:
+
+- Dispatch is on the object's **actual** class, so a subclass override wins — the same rule as the qualified path.
+- Access control still applies. The check is against the class that owns the *currently running* method, so a parent's code cannot reach a child's `PRIVATE` override; that is `E3100`.
+- `CALL Name(...)` inside a method finds a method first too, and reports `E2082` if that method is a `FUNCTION`.
+- Outside a class nothing changes: an unknown name is still `E3090`.
+
+Note that `CALL Object.Method(...)` remains a syntax error. The guide shows the qualified form without `CALL`, so that is the only accepted spelling.
+
 ---
 
 ## 16. Diagnostics catalogue
@@ -1418,16 +1431,17 @@ The `for` snippet uses the same placeholder id `${1:i}` twice so typing the cont
 
 ### 18.5 The Run command
 
-`pseudoLang.run` should **not** reimplement execution. It starts a debug session with `noDebug: true`, which reuses the whole debug adapter and gives correct `INPUT` handling for free:
+**[DECISION]** `pseudoLang.run` runs the program in a real VS Code terminal:
 
 ```ts
-await vscode.debug.startDebugging(undefined, {
-  type: 'pseudo',
-  request: 'launch',
-  name: 'Run pseudocode file',
-  program: editor.document.uri.fsPath,
-}, { noDebug: true });
+terminal.sendText(`node ${cliPath} run ${filePath}`);
 ```
+
+`esbuild.mjs` bundles a second entry point, `dist/pseudo-cli.js`, so the extension ships its own copy of the CLI and does not depend on a global install.
+
+The guide originally specified `vscode.debug.startDebugging(..., { noDebug: true })` instead, reusing the M10 debug adapter. A terminal is better for the one thing that matters most here: `INPUT`. A terminal gives the program genuine line-buffered keyboard input, with history, editing and Ctrl+C, which is what a student expects from a program that asks a question. Routing `INPUT` through a debug session means a modal `showInputBox` per prompt, which is worse for anything that reads more than one value. The terminal path also makes M9 self-contained — the Run command works before the debug adapter exists.
+
+M10 still registers the adapter, so `F5` and `Ctrl+F5` work as well; the ▷ button and **Pseudocode: Run File** use the terminal.
 
 Save the file first if dirty. If the document is untitled, prompt to save — file-relative paths in `OPENFILE` need a real location.
 

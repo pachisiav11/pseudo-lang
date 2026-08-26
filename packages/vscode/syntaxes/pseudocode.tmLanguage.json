@@ -1,0 +1,94 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "Pseudocode",
+  "scopeName": "source.pseudocode",
+  "patterns": [
+    { "include": "#comment" },
+    { "include": "#string" },
+    { "include": "#character" },
+    { "include": "#date" },
+    { "include": "#number" },
+    { "include": "#boolean" },
+    { "include": "#builtin" },
+    { "include": "#type" },
+    { "include": "#control" },
+    { "include": "#declaration" },
+    { "include": "#io" },
+    { "include": "#wordOperator" },
+    { "include": "#assignment" },
+    { "include": "#comparison" },
+    { "include": "#arithmetic" },
+    { "include": "#call" }
+  ],
+  "repository": {
+    "comment": {
+      "name": "comment.line.double-slash.pseudocode",
+      "match": "//.*$"
+    },
+    "string": {
+      "name": "string.quoted.double.pseudocode",
+      "begin": "\"",
+      "end": "\"|$",
+      "beginCaptures": { "0": { "name": "punctuation.definition.string.begin.pseudocode" } },
+      "endCaptures": { "0": { "name": "punctuation.definition.string.end.pseudocode" } }
+    },
+    "character": {
+      "name": "string.quoted.single.pseudocode",
+      "match": "'[^']'"
+    },
+    "date": {
+      "name": "constant.numeric.date.pseudocode",
+      "match": "\\b\\d{2}/\\d{2}/\\d{4}\\b"
+    },
+    "number": {
+      "patterns": [
+        { "name": "constant.numeric.real.pseudocode", "match": "\\b\\d+\\.\\d+\\b" },
+        { "name": "constant.numeric.integer.pseudocode", "match": "\\b\\d+\\b" }
+      ]
+    },
+    "boolean": {
+      "name": "constant.language.boolean.pseudocode",
+      "match": "\\b(TRUE|FALSE)\\b"
+    },
+    "builtin": {
+      "name": "support.function.builtin.pseudocode",
+      "match": "\\b(RIGHT|LENGTH|MID|LCASE|UCASE|INT|RAND|EOF)\\b(?=\\s*\\()"
+    },
+    "type": {
+      "name": "storage.type.pseudocode",
+      "match": "\\b(INTEGER|REAL|CHAR|STRING|BOOLEAN|DATE|ARRAY)\\b"
+    },
+    "control": {
+      "name": "keyword.control.pseudocode",
+      "match": "\\b(IF|THEN|ELSE|ENDIF|CASE|OF|OTHERWISE|ENDCASE|FOR|TO|STEP|NEXT|WHILE|ENDWHILE|REPEAT|UNTIL|RETURN)\\b"
+    },
+    "declaration": {
+      "name": "keyword.declaration.pseudocode",
+      "match": "\\b(DECLARE|CONSTANT|TYPE|ENDTYPE|DEFINE|SET|PROCEDURE|ENDPROCEDURE|FUNCTION|ENDFUNCTION|RETURNS|CALL|BYREF|BYVAL|CLASS|ENDCLASS|INHERITS|PUBLIC|PRIVATE|NEW|SUPER)\\b"
+    },
+    "io": {
+      "name": "keyword.other.io.pseudocode",
+      "match": "\\b(INPUT|OUTPUT|OPENFILE|READFILE|WRITEFILE|CLOSEFILE|SEEK|GETRECORD|PUTRECORD|READ|WRITE|APPEND|RANDOM)\\b"
+    },
+    "wordOperator": {
+      "name": "keyword.operator.word.pseudocode",
+      "match": "\\b(AND|OR|NOT|DIV|MOD)\\b"
+    },
+    "assignment": {
+      "name": "keyword.operator.assignment.pseudocode",
+      "match": "(←|<-)"
+    },
+    "comparison": {
+      "name": "keyword.operator.comparison.pseudocode",
+      "match": "(<>|<=|>=|[<>=])"
+    },
+    "arithmetic": {
+      "name": "keyword.operator.arithmetic.pseudocode",
+      "match": "[+\\-*/&^]"
+    },
+    "call": {
+      "name": "entity.name.function.pseudocode",
+      "match": "\\b[A-Za-z][A-Za-z0-9_]*(?=\\s*\\()"
+    }
+  }
+}

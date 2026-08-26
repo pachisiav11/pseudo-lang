@@ -38,3 +38,17 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - M8: object-oriented programming. CLASS with PUBLIC/PRIVATE members, NEW
   constructors, INHERITS, SUPER, dynamic dispatch on the object's actual class,
   and access control that a subclass can pass through.
+- M9: the VS Code extension. Syntax highlighting, twenty snippets, problem
+  markers on save, and a Run command that executes the file in a terminal so
+  INPUT reads from the keyboard. A typed `<-` is rewritten to `←` on save, and
+  `.pseudo` files default to three-space indentation to match the guide's own
+  listings. `pnpm package` produces the `.vsix`.
+
+### Fixed
+
+- A FOR loop written with the `←` character was rejected with "expected `<-`".
+  The parser matched the token's text as well as its kind, and ASSIGN carries
+  whichever of the two forms was typed. Only keywords are matched by text now.
+- A method could not call another method of the same object. The guide gives no
+  THIS keyword, so an unqualified name inside a method body now resolves to a
+  method of the current object before it resolves to a global subprogram.

@@ -1,0 +1,51 @@
+// Classes, inheritance and access modifiers.
+//
+// Describe() calls Area() without naming a receiver. The guide always writes
+// method calls as Object.Method(), and it has no THIS keyword, so an
+// unqualified call inside a method is taken as a call on the current object.
+
+CLASS Shape
+   PRIVATE Name : STRING
+
+   PUBLIC PROCEDURE NEW(GivenName : STRING)
+      Name ← GivenName
+   ENDPROCEDURE
+
+   PUBLIC PROCEDURE Describe()
+      OUTPUT Name, " has area ", Area()
+   ENDPROCEDURE
+
+   PUBLIC FUNCTION Area() RETURNS REAL
+      RETURN 0.0
+   ENDFUNCTION
+ENDCLASS
+
+CLASS Rectangle INHERITS Shape
+   PRIVATE Width : REAL
+   PRIVATE Height : REAL
+
+   PUBLIC PROCEDURE NEW(GivenName : STRING, GivenWidth : REAL, GivenHeight : REAL)
+      SUPER.NEW(GivenName)
+      Width ← GivenWidth
+      Height ← GivenHeight
+   ENDPROCEDURE
+
+   PUBLIC FUNCTION Area() RETURNS REAL
+      RETURN Width * Height
+   ENDFUNCTION
+ENDCLASS
+
+CLASS Square INHERITS Rectangle
+   PUBLIC PROCEDURE NEW(Side : REAL)
+      SUPER.NEW("Square", Side, Side)
+   ENDPROCEDURE
+ENDCLASS
+
+DECLARE Box : Rectangle
+DECLARE Tile : Square
+
+Box ← NEW Rectangle("Rectangle", 3.0, 4.0)
+Tile ← NEW Square(2.5)
+
+Box.Describe()
+Tile.Describe()
