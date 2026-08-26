@@ -40,14 +40,12 @@ export interface RunOptions {
   strictDeclarations: boolean;
   maxCallDepth: number;
   randomFileRecordSize: number;
-  extraBuiltins: string[];
 }
 
 export const DEFAULT_RUN_OPTIONS: RunOptions = {
   strictDeclarations: false,
   maxCallDepth: 2000,
   randomFileRecordSize: 512,
-  extraBuiltins: [],
 };
 
 /** A Host that captures output and replays scripted input. Used by the tests. */

@@ -1,0 +1,5 @@
+PROCEDURE Bump(BYREF Value : INTEGER)
+   Value <- Value + 1
+ENDPROCEDURE
+
+CALL Bump(1)

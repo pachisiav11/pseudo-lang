@@ -1,0 +1,7 @@
+error[E3093]: `Max` takes 2 arguments, but 1 was given
+ --> program.pseudo:9:8
+  |
+9 | OUTPUT Max(1)
+  |        ^^^^^^ wrong number of arguments
+  |
+help: It is defined on line 1.

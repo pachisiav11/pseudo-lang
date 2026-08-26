@@ -1,0 +1,10 @@
+// Guide section 7.2.
+
+DECLARE Password : STRING
+
+REPEAT
+   OUTPUT "Please enter password"
+   INPUT Password
+UNTIL Password = "Secret"
+
+OUTPUT "Welcome"

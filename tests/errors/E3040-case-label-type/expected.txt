@@ -1,0 +1,9 @@
+error[E3040]: this case is CHAR but the CASE selector is STRING
+ --> program.pseudo:4:4
+  |
+4 |    'W' : OUTPUT "up"
+  |    ^^^ this is CHAR
+  |
+help: CHAR and STRING are different types. A variable that is read with
+      INPUT and never declared holds a STRING, so declare it as a CHAR
+      first if you want to match single-quoted cases.

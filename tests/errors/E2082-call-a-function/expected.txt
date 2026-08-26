@@ -1,0 +1,8 @@
+error[E2082]: `Double` is a FUNCTION, so it cannot be called with CALL
+ --> program.pseudo:5:1
+  |
+5 | CALL Double(2)
+  | ^^^^^^^^^^^^^^ a function, not a procedure
+  |
+help: A function returns a value, so it is used inside an expression:
+      OUTPUT Double(...)

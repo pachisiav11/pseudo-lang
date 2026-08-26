@@ -1,0 +1,8 @@
+error[E3100]: `Name` is a PRIVATE property of `Pet`
+  --> program.pseudo:10:8
+   |
+10 | OUTPUT MyPet.Name
+   |        ^^^^^^^^^^ private
+   |
+help: It can only be used inside `Pet` or a class that inherits from it.
+      Give the class a PUBLIC method that reaches it.

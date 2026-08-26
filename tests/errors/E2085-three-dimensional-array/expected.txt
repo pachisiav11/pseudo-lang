@@ -1,0 +1,8 @@
+error[E2085]: an array may have one or two dimensions, not 3
+ --> program.pseudo:1:16
+  |
+1 | DECLARE Cube : ARRAY[1:2,1:2,1:2] OF INTEGER
+  |                ^^^^^ too many dimensions
+  |
+help: The 9618 syllabus covers one-dimensional and two-dimensional
+      arrays only.

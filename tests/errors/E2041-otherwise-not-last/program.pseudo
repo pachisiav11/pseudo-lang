@@ -1,0 +1,6 @@
+DECLARE Choice : INTEGER
+Choice <- 1
+CASE OF Choice
+   OTHERWISE : OUTPUT "other"
+   1 : OUTPUT "one"
+ENDCASE

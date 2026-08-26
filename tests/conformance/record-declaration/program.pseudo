@@ -1,0 +1,13 @@
+// Guide section 4.1.
+
+TYPE StudentRecord
+   DECLARE LastName : STRING
+   DECLARE FirstName : STRING
+   DECLARE DateOfBirth : DATE
+   DECLARE YearGroup : INTEGER
+   DECLARE FormGroup : CHAR
+ENDTYPE
+
+DECLARE Pupil1 : StudentRecord
+
+OUTPUT "declared"

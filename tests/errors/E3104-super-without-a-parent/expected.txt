@@ -1,0 +1,11 @@
+error[E3104]: `Pet` does not inherit from anything, so it has no SUPER
+ --> program.pseudo:3:7
+  |
+3 |       SUPER.NEW()
+  |       ^^^^^^^^^^^ no parent class
+  |
+help: Add a parent class:
+      CLASS Pet INHERITS SomeClass
+
+call stack (innermost first):
+  NEW (line 8)

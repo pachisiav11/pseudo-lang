@@ -1,0 +1,7 @@
+error[E3082]: array index 31 is outside the bounds of `Marks`
+ --> program.pseudo:2:7
+  |
+2 | Marks[31] <- 0
+  |       ^^ 31 is out of range
+  |
+help: The valid range for this dimension is 1 to 30.

@@ -1,0 +1,7 @@
+// Guide section 5.5.
+
+OUTPUT RIGHT("ABCDEFGH", 3)
+OUTPUT LENGTH("Happy Days")
+OUTPUT MID("ABCDEFGH", 2, 3)
+OUTPUT LCASE('W')
+OUTPUT UCASE('h')

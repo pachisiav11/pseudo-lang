@@ -1,0 +1,6 @@
+error[E3011]: division by zero
+ --> program.pseudo:4:11
+  |
+4 | Result <- 10 / Zero
+  |           ^^^^^^^^^ the right-hand side is 0
+  |

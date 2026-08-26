@@ -12,3 +12,5 @@
 - Added: 2026-08-26 08:34 | Completed: 2026-08-26 09:32 | M8 - CLASS, INHERITS, NEW, SUPER, PUBLIC/PRIVATE, dynamic dispatch, 24 tests
 - Added: 2026-08-26 08:34 | Completed: 2026-08-26 09:32 | M9 — VS Code extension: TextMate grammar, Run command, snippets, .vsix
 - Added: 2026-08-26 08:34 | Completed: 2026-08-26 13:35 | M10 — debug adapter: breakpoints, step, variables, call stack, INPUT prompts
+- Added: 2026-08-26 08:34 | Completed: 2026-08-26 13:50 | M11 — README, docs/DEVIATIONS.md, full conformance suite, GitHub release workflow
+- Added: 2026-08-26 08:34 | Completed: 2026-08-26 13:50 | Decide whether to ship the Cambridge PDF in the repo or replace it with a link + checksum — decided: not redistributed, README links to Cambridge

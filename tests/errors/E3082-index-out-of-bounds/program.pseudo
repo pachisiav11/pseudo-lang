@@ -1,0 +1,2 @@
+DECLARE Marks : ARRAY[1:30] OF INTEGER
+Marks[31] <- 0

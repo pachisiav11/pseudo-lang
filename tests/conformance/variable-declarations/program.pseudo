@@ -1,0 +1,5 @@
+// Guide section 2.4. Three declarations and nothing else. It must not error.
+
+DECLARE Counter : INTEGER
+DECLARE TotalToPay : REAL
+DECLARE GameOver : BOOLEAN

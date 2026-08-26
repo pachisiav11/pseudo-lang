@@ -1,0 +1,32 @@
+// Guide section 1.5 and 8.3.
+//
+// The guide writes this as SWAP(BYREF X : INTEGER, Y : INTEGER) and says the
+// keyword "need not be repeated", so BOTH parameters are passed by reference
+// and both A and B change.
+
+PROCEDURE SWAP(BYREF X : INTEGER, Y : INTEGER)
+   DECLARE Temp : INTEGER
+   Temp <- X    // temporarily store X
+   X <- Y
+   Y <- Temp
+ENDPROCEDURE
+
+PROCEDURE HALFSWAP(BYREF X : INTEGER, BYVAL Y : INTEGER)
+   DECLARE Temp : INTEGER
+   Temp <- X
+   X <- Y
+   Y <- Temp
+ENDPROCEDURE
+
+DECLARE A : INTEGER
+DECLARE B : INTEGER
+
+A <- 1
+B <- 2
+CALL SWAP(A, B)
+OUTPUT "After SWAP: ", A, " ", B
+
+A <- 1
+B <- 2
+CALL HALFSWAP(A, B)
+OUTPUT "After HALFSWAP: ", A, " ", B

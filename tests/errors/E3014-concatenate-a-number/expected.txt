@@ -1,0 +1,6 @@
+error[E3014]: `&` joins text, but found STRING and INTEGER
+ --> program.pseudo:2:10
+  |
+2 | Label <- "total: " & 10
+  |          ^^^^^^^^^^^^^^ expected STRING or CHAR
+  |

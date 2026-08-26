@@ -1,0 +1,4 @@
+DECLARE Count : INTEGER
+Count <- 1
+IF Count > 0 THEN
+   OUTPUT "positive"

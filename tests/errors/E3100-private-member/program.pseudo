@@ -1,0 +1,10 @@
+CLASS Pet
+   PRIVATE Name : STRING
+   PUBLIC PROCEDURE NEW(GivenName : STRING)
+      Name <- GivenName
+   ENDPROCEDURE
+ENDCLASS
+
+DECLARE MyPet : Pet
+MyPet <- NEW Pet("Kitty")
+OUTPUT MyPet.Name

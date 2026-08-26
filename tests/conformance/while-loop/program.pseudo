@@ -1,0 +1,11 @@
+// Guide section 7.3. The digital root.
+
+DECLARE Number : INTEGER
+
+Number <- 723
+
+WHILE Number > 9
+   Number <- (Number DIV 100) + (Number DIV 10 MOD 10) + (Number MOD 10)
+ENDWHILE
+
+OUTPUT Number

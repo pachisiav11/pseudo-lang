@@ -1,0 +1,8 @@
+error[E2083]: a procedure is called with CALL
+ --> program.pseudo:5:1
+  |
+5 | Go()
+  | ^^^^ missing CALL
+  |
+help: Write it as:
+      CALL Go()

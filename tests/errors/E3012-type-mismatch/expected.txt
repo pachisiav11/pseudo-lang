@@ -1,0 +1,6 @@
+error[E3012]: cannot store STRING in `Count`, which is INTEGER
+ --> program.pseudo:2:1
+  |
+2 | Count <- "many"
+  | ^^^^^^^^^^^^^^^ this is STRING
+  |

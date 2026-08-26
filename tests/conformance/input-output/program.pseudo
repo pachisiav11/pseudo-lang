@@ -1,0 +1,10 @@
+// Guide section 5.1.
+
+DECLARE Answer : STRING
+DECLARE Lives : INTEGER
+
+INPUT Answer
+Lives <- 3
+
+OUTPUT "You have ", Lives, " lives left"
+OUTPUT Answer

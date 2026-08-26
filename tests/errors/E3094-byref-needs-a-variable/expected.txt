@@ -1,0 +1,7 @@
+error[E3094]: `Value` is a BYREF parameter, so it needs a variable rather than a value
+ --> program.pseudo:5:11
+  |
+5 | CALL Bump(1)
+  |           ^ not a variable
+  |
+help: Assign the value to a variable first, then pass that variable.

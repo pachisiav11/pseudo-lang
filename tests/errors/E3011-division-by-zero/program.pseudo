@@ -1,0 +1,4 @@
+DECLARE Result : REAL
+DECLARE Zero : INTEGER
+Zero <- 0
+Result <- 10 / Zero

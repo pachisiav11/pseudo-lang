@@ -1,0 +1,6 @@
+error[E3098]: the condition of an IF must be TRUE or FALSE, but this is INTEGER
+ --> program.pseudo:3:4
+  |
+3 | IF Count THEN
+  |    ^^^^^ this is INTEGER
+  |

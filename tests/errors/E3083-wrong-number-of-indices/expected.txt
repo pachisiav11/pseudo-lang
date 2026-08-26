@@ -1,0 +1,6 @@
+error[E3083]: this array has 2 dimensions, but 1 index was given
+ --> program.pseudo:2:1
+  |
+2 | Grid[1] <- 'X'
+  | ^^^^^^^ wrong number of indices
+  |

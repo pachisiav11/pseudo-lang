@@ -1,0 +1,2 @@
+OPENFILE "FileA.txt" FOR READ
+OUTPUT "done"

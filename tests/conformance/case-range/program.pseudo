@@ -1,0 +1,17 @@
+// Guide section 6.2, the <value1> TO <value2> form.
+
+PROCEDURE Grade(Mark : INTEGER)
+   CASE OF Mark
+      0 TO 39 : OUTPUT "U"
+      40 TO 59 : OUTPUT "C"
+      60 TO 79 : OUTPUT "B"
+      80 TO 100 : OUTPUT "A"
+      OTHERWISE : OUTPUT "invalid"
+   ENDCASE
+ENDPROCEDURE
+
+CALL Grade(12)
+CALL Grade(40)
+CALL Grade(79)
+CALL Grade(100)
+CALL Grade(101)

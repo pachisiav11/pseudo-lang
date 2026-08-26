@@ -1,0 +1,4 @@
+Total for row 1 is 6
+Total for row 2 is 12
+Total for row 3 is 18
+The grand total is 36

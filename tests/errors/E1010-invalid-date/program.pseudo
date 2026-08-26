@@ -1,0 +1,2 @@
+DECLARE Birthday : DATE
+Birthday <- 31/02/2005

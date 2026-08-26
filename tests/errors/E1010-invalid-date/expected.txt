@@ -1,0 +1,7 @@
+error[E1010]: `31/02/2005` is not a valid calendar date
+ --> program.pseudo:2:13
+  |
+2 | Birthday <- 31/02/2005
+  |             ^^^^^^^^^^ invalid date
+  |
+help: Dates are written dd/mm/yyyy.

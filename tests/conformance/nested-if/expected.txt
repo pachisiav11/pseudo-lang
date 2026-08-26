@@ -1,0 +1,4 @@
+Congratulations, you are the new champion
+You won, but you are not the champion
+You drew
+You lost

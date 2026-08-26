@@ -1,0 +1,2 @@
+DECLARE Initial : CHAR
+Initial <- 'ab'

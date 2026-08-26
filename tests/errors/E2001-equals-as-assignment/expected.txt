@@ -1,0 +1,8 @@
+error[E2001]: `=` cannot be used to assign a value
+ --> program.pseudo:2:7
+  |
+2 | Total = 0
+  |       ^ this is a comparison operator
+  |
+help: Assignment in 9618 pseudocode is written with a left arrow:
+      Total <- 0

@@ -1,0 +1,26 @@
+// Guide section 6.1.
+
+DECLARE ChessResult : CHAR
+DECLARE Score : INTEGER
+DECLARE HighestScore : INTEGER
+
+PROCEDURE Report(Result : CHAR, TheScore : INTEGER, Highest : INTEGER)
+   IF Result = 'W' THEN
+      IF TheScore > Highest THEN
+         OUTPUT "Congratulations, you are the new champion"
+      ELSE
+         OUTPUT "You won, but you are not the champion"
+      ENDIF
+   ELSE
+      IF Result = 'D' THEN
+         OUTPUT "You drew"
+      ELSE
+         OUTPUT "You lost"
+      ENDIF
+   ENDIF
+ENDPROCEDURE
+
+CALL Report('W', 10, 5)
+CALL Report('W', 1, 5)
+CALL Report('D', 1, 5)
+CALL Report('L', 1, 5)

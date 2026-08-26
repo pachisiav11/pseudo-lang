@@ -1,0 +1,12 @@
+// Guide section 4.1. Enumerated values compare by declaration order.
+
+TYPE Season = (Spring, Summer, Autumn, Winter)
+
+DECLARE ThisSeason : Season
+DECLARE NextSeason : Season
+
+ThisSeason <- Spring
+NextSeason <- Summer
+
+OUTPUT ThisSeason
+OUTPUT ThisSeason < NextSeason

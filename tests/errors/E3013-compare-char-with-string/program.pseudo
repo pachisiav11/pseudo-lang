@@ -1,0 +1,5 @@
+DECLARE Letter : CHAR
+DECLARE Word : STRING
+Letter <- 'a'
+Word <- "a"
+OUTPUT Letter = Word

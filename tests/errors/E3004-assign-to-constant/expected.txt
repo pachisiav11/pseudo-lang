@@ -1,0 +1,6 @@
+error[E3004]: `HourlyRate` is a constant and cannot be changed
+ --> program.pseudo:2:1
+  |
+2 | HourlyRate <- 7.00
+  | ^^^^^^^^^^^^^^^^^^ constant
+  |

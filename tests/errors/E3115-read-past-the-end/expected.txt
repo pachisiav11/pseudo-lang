@@ -1,0 +1,8 @@
+error[E3115]: there are no more lines to read from `FileA.txt`
+ --> program.pseudo:4:1
+  |
+4 | READFILE "FileA.txt", LineOfText
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ end of file
+  |
+help: Test for the end of the file first:
+      WHILE NOT EOF("FileA.txt")

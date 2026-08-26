@@ -1,0 +1,23 @@
+// Guide section 6.2.
+//
+// Move must be declared CHAR. The guide's fragment never declares it, and if
+// it is left to an implicit INPUT it becomes a STRING, which no CHAR label can
+// match.
+
+DECLARE Move : CHAR
+
+PROCEDURE Play(Move : CHAR)
+   CASE OF Move
+      'W' : OUTPUT "up"
+      'S' : OUTPUT "down"
+      'A' : OUTPUT "left"
+      'D' : OUTPUT "right"
+      OTHERWISE : OUTPUT "Beep"
+   ENDCASE
+ENDPROCEDURE
+
+CALL Play('W')
+CALL Play('S')
+CALL Play('A')
+CALL Play('D')
+CALL Play('Q')

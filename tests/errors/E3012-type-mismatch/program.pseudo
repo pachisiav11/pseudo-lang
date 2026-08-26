@@ -1,0 +1,2 @@
+DECLARE Count : INTEGER
+Count <- "many"

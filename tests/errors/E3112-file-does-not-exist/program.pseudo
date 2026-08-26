@@ -1,0 +1,4 @@
+DECLARE LineOfText : STRING
+OPENFILE "missing.txt" FOR READ
+READFILE "missing.txt", LineOfText
+CLOSEFILE "missing.txt"

@@ -137,7 +137,7 @@ DECLARE A : ARRAY[1:3] OF INTEGER
 DECLARE B : ARRAY[1:4] OF INTEGER
 B <- A
 `;
-    expect(await errorOf(program)).toBe('E3012');
+    expect(await errorOf(program)).toBe('E3080');
   });
 
   it('accepts bounds given as expressions', async () => {
@@ -151,6 +151,6 @@ OUTPUT A[4]
   });
 
   it('rejects three dimensions', async () => {
-    expect(await errorOf('DECLARE A : ARRAY[1:2,1:2,1:2] OF INTEGER')).toBe('E2084');
+    expect(await errorOf('DECLARE A : ARRAY[1:2,1:2,1:2] OF INTEGER')).toBe('E2085');
   });
 });

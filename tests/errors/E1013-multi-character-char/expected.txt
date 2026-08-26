@@ -1,0 +1,7 @@
+error[E1013]: `'ab'` contains 2 characters
+ --> program.pseudo:2:12
+  |
+2 | Initial <- 'ab'
+  |            ^^^^ expected exactly one character
+  |
+help: Use single quotes for one CHAR, and double quotes for a STRING.

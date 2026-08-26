@@ -1,0 +1,8 @@
+error[E3116]: `FileA.txt` is not open
+ --> program.pseudo:2:1
+  |
+2 | READFILE "FileA.txt", LineOfText
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not open
+  |
+help: Open it first:
+      OPENFILE "FileA.txt" FOR READ

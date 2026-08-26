@@ -1,0 +1,2 @@
+Penalty Fine = 10
+Penalty Fine = 40

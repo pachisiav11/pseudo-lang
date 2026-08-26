@@ -414,6 +414,16 @@ export class Parser {
     }
 
     if (!this.check('ASSIGN')) {
+      // `Go()` on its own line is a procedure call missing its CALL. Saying
+      // "expected `<-`" would send the reader looking for the wrong mistake.
+      if (target.kind === 'Call' && (this.check('NEWLINE') || this.check('EOF'))) {
+        this.fail('E2083', target.span, {
+          message: `a procedure is called with CALL`,
+          label: 'missing CALL',
+          help: `Write it as:
+CALL ${this.exprText(target)}`,
+        });
+      }
       this.fail('E2002', this.current.span, {
         message: `expected \`<-\` after \`${this.exprText(target)}\`, found ${describeToken(this.current)}`,
         label: 'expected an assignment',
@@ -970,6 +980,14 @@ export class Parser {
         return `${this.exprText(expr.target)}[...]`;
       case 'Deref':
         return `${this.exprText(expr.target)}^`;
+      case 'Call':
+        return `${expr.callee}(${expr.args.map((a) => this.exprText(a)).join(', ')})`;
+      case 'MethodCall':
+        return `${this.exprText(expr.target)}.${expr.method}(${expr.args.map((a) => this.exprText(a)).join(', ')})`;
+      case 'IntLit':
+        return String(expr.value);
+      case 'StringLit':
+        return JSON.stringify(expr.value);
       default:
         return 'expression';
     }
@@ -993,7 +1011,7 @@ export class Parser {
       }
       this.expect('RBRACKET', ']');
       if (dims.length > 2) {
-        this.fail('E2084', tok.span, {
+        this.fail('E2085', tok.span, {
           message: `an array may have one or two dimensions, not ${dims.length}`,
           label: 'too many dimensions',
           help: 'The 9618 syllabus covers one-dimensional and two-dimensional\narrays only.',

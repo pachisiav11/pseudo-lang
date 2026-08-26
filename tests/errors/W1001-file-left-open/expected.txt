@@ -1,0 +1,8 @@
+warning[W1001]: `FileA.txt` was still open when the program ended
+ --> program.pseudo:1:1
+  |
+1 | OPENFILE "FileA.txt" FOR READ
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ opened here
+  |
+help: It has been closed and its data saved, but adding CLOSEFILE
+      makes the program correct.

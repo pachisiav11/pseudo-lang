@@ -1,0 +1,16 @@
+// Guide section 4.1.
+//
+// The guide's own example here is type-incoherent: it declares
+// MyPointer : TIntPointer and then writes MyPointer <- ^Score where Score is
+// never declared. The declaration form is what this case pins.
+
+TYPE TIntPointer = ^INTEGER
+
+DECLARE Score : INTEGER
+DECLARE MyPointer : TIntPointer
+
+Score <- 10
+MyPointer <- ^Score
+MyPointer^ <- MyPointer^ + 5
+
+OUTPUT Score

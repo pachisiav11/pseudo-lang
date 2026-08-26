@@ -1,0 +1,2 @@
+DECLARE Label : STRING
+Label <- "total: " & 10

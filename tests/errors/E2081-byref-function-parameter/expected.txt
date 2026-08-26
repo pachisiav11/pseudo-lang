@@ -1,0 +1,8 @@
+error[E2081]: `Value` cannot be passed BYREF because this is a FUNCTION
+ --> program.pseudo:1:23
+  |
+1 | FUNCTION Double(BYREF Value : INTEGER) RETURNS INTEGER
+  |                       ^^^^^ BYREF parameter
+  |
+help: The guide states that parameters should not be passed by
+      reference to a function.

@@ -1,0 +1,7 @@
+// Guide section 2.5.
+
+CONSTANT HourlyRate = 6.50
+CONSTANT DefaultText = "N/A"
+
+OUTPUT HourlyRate
+OUTPUT DefaultText

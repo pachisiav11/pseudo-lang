@@ -63,14 +63,49 @@ and `--max-depth <n>`.
 [`records.pseudo`](examples/records.pseudo) for records and `BYREF`, and
 [`shapes.pseudo`](examples/shapes.pseudo) for classes and inheritance.
 
+## What is supported
+
+Everything the guide defines: the six primitive types and `DATE`, one- and
+two-dimensional arrays, all five control structures, procedures and functions
+with `BYVAL`/`BYREF`, records, enumerated types, pointers, sets, text and
+random file handling, and classes with inheritance and access modifiers.
+
+The interpreter is deliberately strict. It accepts only the forms the guide
+prints, and rejects near-misses with a message naming the correct form:
+
+```
+error[E2001]: `=` cannot be used to assign a value
+ --> volume.pseudo:2:7
+  |
+2 | Total = 0
+  |       ^ this is a comparison operator
+  |
+help: Assignment in 9618 pseudocode is written with a left arrow:
+      Total <- 0
+```
+
+## Where the guide leaves gaps
+
+A pseudocode guide for teachers is not a language specification, and running
+pseudocode means answering questions it never asked. Every choice this
+implementation makes is written down, with the reasoning, in
+[docs/DEVIATIONS.md](docs/DEVIATIONS.md) — including the two places where the
+guide contradicts itself.
+
+None of it is examinable. It describes one implementation of the notation, not
+the notation.
+
+## The Cambridge guide itself
+
+This repository does not carry the PDF. It is © Cambridge University Press &
+Assessment and is available free from
+[cambridgeinternational.org](https://www.cambridgeinternational.org/) — look
+for *9618 Pseudocode Guide for Teachers (for examination from 2027)*.
+
 ## Status
 
-Milestones M0–M10 are complete: the language runs in full, and the VS Code
-extension ships syntax highlighting, snippets, problem markers, a Run command
-and a step debugger. Polish and release (M11) is next.
-
-See [BUILD_GUIDE.md](BUILD_GUIDE.md) for the full specification and the
-milestone plan, and [todo.md](todo.md) for progress.
+All eleven milestones are complete. See [BUILD_GUIDE.md](BUILD_GUIDE.md) for the
+full specification, and [CHANGELOG.md](CHANGELOG.md) for what landed when.
 
 ## Development
 
@@ -79,6 +114,11 @@ pnpm install
 pnpm build
 pnpm test
 ```
+
+The suite has 324 tests. `tests/conformance/` holds one directory per example in
+the Cambridge guide, each with its program and its expected output;
+`tests/errors/` pins the full rendered text of a diagnostic, caret line and all,
+so a change to the wording is a visible diff rather than a silent regression.
 
 Press `F5` in this repository to launch an Extension Development Host with the
 extension loaded and the `examples/` folder open.

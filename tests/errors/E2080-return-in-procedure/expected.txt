@@ -1,0 +1,11 @@
+error[E2080]: `Report` is a PROCEDURE, so it cannot RETURN a value
+ --> program.pseudo:2:4
+  |
+2 |    RETURN 1
+  |    ^^^^^^^^ RETURN inside a procedure
+  |
+help: Only a FUNCTION returns a value. Use a BYREF parameter to send a
+      result back from a procedure.
+
+call stack (innermost first):
+  Report (line 5)

@@ -1,0 +1,39 @@
+// Guide section 4.2.
+
+TYPE StudentRecord
+   DECLARE LastName : STRING
+   DECLARE FirstName : STRING
+   DECLARE DateOfBirth : DATE
+   DECLARE YearGroup : INTEGER
+   DECLARE FormGroup : CHAR
+ENDTYPE
+
+DECLARE Pupil1 : StudentRecord
+DECLARE Pupil2 : StudentRecord
+DECLARE Form : ARRAY[1:30] OF StudentRecord
+DECLARE Index : INTEGER
+
+Pupil1.LastName <- "Johnson"
+Pupil1.FirstName <- "Leroy"
+Pupil1.DateOfBirth <- 02/01/2005
+Pupil1.YearGroup <- 6
+Pupil1.FormGroup <- 'A'
+
+Pupil2 <- Pupil1
+Pupil2.LastName <- "Sharma"
+
+// The guide's fragment reads Form[Index].YearGroup without ever filling the
+// array. Cells are deliberately not zero-initialised, so every element it
+// touches has to be given a value first.
+FOR Index <- 1 TO 30
+   Form[Index] <- Pupil1
+NEXT Index
+
+FOR Index <- 1 TO 30
+   Form[Index].YearGroup <- Form[Index].YearGroup + 1
+NEXT Index
+
+OUTPUT Pupil1.LastName
+OUTPUT Pupil2.LastName
+OUTPUT Pupil1.DateOfBirth
+OUTPUT Form[1].YearGroup

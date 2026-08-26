@@ -74,6 +74,8 @@ export class SourceFile {
  *   help: assignment in 9618 pseudocode is written with a left arrow
  *         Total <- 0
  */
+const CALL_STACK_LIMIT = 10;
+
 export function renderDiagnostic(err: PseudoError, source: SourceFile): string {
   const severity = isWarning(err.code) ? 'warning' : 'error';
   const out: string[] = [];
@@ -106,7 +108,12 @@ export function renderDiagnostic(err: PseudoError, source: SourceFile): string {
   if (err.callStack.length > 0) {
     out.push('');
     out.push('call stack (innermost first):');
-    for (const frame of err.callStack) out.push(`  ${frame}`);
+    // Runaway recursion produces thousands of identical frames. The innermost
+    // few and the count say everything the whole list would.
+    const shown = err.callStack.slice(0, CALL_STACK_LIMIT);
+    for (const frame of shown) out.push(`  ${frame}`);
+    const hidden = err.callStack.length - shown.length;
+    if (hidden > 0) out.push(`  ... and ${hidden} more`);
   }
 
   return out.join('\n');

@@ -1,0 +1,5 @@
+DECLARE Age : INTEGER
+Age <- 15
+IF 0 < Age < 20 THEN
+   OUTPUT "teen"
+ENDIF

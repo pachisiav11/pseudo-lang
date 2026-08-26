@@ -1,0 +1,6 @@
+DECLARE Move : STRING
+Move <- "W"
+CASE OF Move
+   'W' : OUTPUT "up"
+   OTHERWISE : OUTPUT "beep"
+ENDCASE

@@ -1,0 +1,9 @@
+// Guide section 4.1.
+
+TYPE LetterSet = SET OF CHAR
+DEFINE Vowels ('A', 'E', 'I', 'O', 'U') : LetterSet
+
+DECLARE MyVowels : LetterSet
+MyVowels <- Vowels
+
+OUTPUT MyVowels

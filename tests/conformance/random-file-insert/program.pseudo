@@ -1,0 +1,24 @@
+// Guide section 9.2. The guide gives no on-disk format for a random file, so
+// this case writes the records it later reads back.
+
+TYPE StudentRecord
+   DECLARE LastName : STRING
+   DECLARE YearGroup : INTEGER
+ENDTYPE
+
+DECLARE NewPupil : StudentRecord
+DECLARE ReadBack : StudentRecord
+
+OPENFILE "StudentFile.Dat" FOR RANDOM
+
+NewPupil.LastName <- "Johnson"
+NewPupil.YearGroup <- 6
+SEEK "StudentFile.Dat", 10
+PUTRECORD "StudentFile.Dat", NewPupil
+
+SEEK "StudentFile.Dat", 10
+GETRECORD "StudentFile.Dat", ReadBack
+
+CLOSEFILE "StudentFile.Dat"
+
+OUTPUT ReadBack.LastName, " ", ReadBack.YearGroup

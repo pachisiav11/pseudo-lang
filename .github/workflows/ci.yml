@@ -24,3 +24,5 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
       - run: pnpm test
+      # Proves the .vsix still builds, which the tests cannot.
+      - run: pnpm package

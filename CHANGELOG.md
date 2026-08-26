@@ -4,7 +4,7 @@ All notable changes to this project are documented in this file. The format
 follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and this
 project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.1.0] - 2026-08-26
 
 ### Added
 
@@ -51,6 +51,12 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   assignment is. INPUT is asked for in an input box, since a debug session has
   no terminal. A breakpoint on a blank line moves to the next statement.
 
+- M11: release. docs/DEVIATIONS.md records every decision the guide left open
+  and the two places where it contradicts itself. A conformance suite with one
+  directory per example in the guide, and an error suite that pins the full
+  rendered text of each diagnostic. A release workflow that attaches the .vsix
+  to a tagged GitHub release, and a CI step that proves the .vsix still builds.
+
 ### Fixed
 
 - A FOR loop written with the `←` character was rejected with "expected `<-`".
@@ -59,3 +65,20 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - A method could not call another method of the same object. The guide gives no
   THIS keyword, so an unqualified name inside a method body now resolves to a
   method of the current object before it resolves to a global subprogram.
+- `W1001` pointed at line 1 rather than at the `OPENFILE` that was left open.
+- Reading an undeclared name under `--strict-declarations` reported `E3001`
+  ("used before it is given a value"), which named the wrong mistake. It is
+  `E3002` ("is not declared") now.
+- `Go()` written without `CALL` reported `E2002`, "expected `<-`". It is `E2083`
+  now, and the help spells out the correct line.
+- A three-dimensional array reported `E2084`, "expected a type". It has its own
+  code, `E2085`, and a message that says one or two dimensions.
+- Whole-array and whole-record assignment mismatches fell into the generic
+  `E3012`. They raise `E3080` and `E3081`, which say what actually differs.
+- Runaway recursion printed a two-thousand-line call stack. The rendered stack
+  stops after ten frames and says how many more there were.
+
+### Removed
+
+- `RunOptions.extraBuiltins`, which was never read. Only the eight functions the
+  guide defines exist, and that is deliberate.

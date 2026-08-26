@@ -1,0 +1,5 @@
+PROCEDURE Go()
+   OUTPUT "go"
+ENDPROCEDURE
+
+Go()

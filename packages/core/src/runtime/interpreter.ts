@@ -306,6 +306,22 @@ export class Interpreter {
       }
     }
     if (!assignable(cell.declared, value)) {
+      // Whole-array and whole-record assignment fail often enough, and for a
+      // specific enough reason, to be worth their own message.
+      if (cell.declared.k === 'ARRAY' && value.t === 'ARRAY') {
+        throw this.error('E3080', span, {
+          message: `\`${cell.name}\` is ${typeName(cell.declared)}, but this is ${valueTypeName(value)}`,
+          label: 'a different shape',
+          help: 'Assigning a whole array needs the same element type and the\nsame bounds on both sides.',
+        });
+      }
+      if (cell.declared.k === 'RECORD' && value.t === 'RECORD') {
+        throw this.error('E3081', span, {
+          message: `\`${cell.name}\` holds a \`${cell.declared.name}\`, but this is a \`${value.typeName}\``,
+          label: `this is a ${value.typeName}`,
+          help: 'Two record types are different types even when their fields\nmatch.',
+        });
+      }
       throw this.error('E3012', span, {
         message: `cannot store ${valueTypeName(value)} in \`${cell.name}\`, which is ${typeName(cell.declared)}`,
         label: `this is ${valueTypeName(value)}`,
@@ -673,7 +689,7 @@ export class Interpreter {
     }
 
     const path = this.host.resolvePath(name);
-    const file: OpenFile = { name, path, mode };
+    const file: OpenFile = { name, path, mode, openedAt: span };
 
     switch (mode) {
       case 'READ': {
@@ -726,8 +742,9 @@ export class Interpreter {
     const warnings: PseudoError[] = [];
     for (const name of [...this.files.keys()]) {
       warnings.push(
-        new PseudoError('W1001', { line: 1, col: 1, endLine: 1, endCol: 2 }, {
+        new PseudoError('W1001', this.files.get(name)?.openedAt ?? { line: 1, col: 1, endLine: 1, endCol: 2 }, {
           message: `\`${name}\` was still open when the program ended`,
+          label: 'opened here',
           help: 'It has been closed and its data saved, but adding CLOSEFILE\nmakes the program correct.',
         }),
       );
@@ -1358,6 +1375,17 @@ export class Interpreter {
               name: member.name,
               ordinal: member.ordinal,
             };
+          }
+          // With declarations required, a name that does not exist at all was
+          // never declared; saying it is "used before it is given a value"
+          // would point at the wrong mistake.
+          if (this.options.strictDeclarations) {
+            throw this.error('E3002', expr.span, {
+              message: `\`${expr.name}\` is not declared`,
+              label: 'not declared',
+              help: `Declare it first, for example:
+DECLARE ${expr.name} : INTEGER`,
+            });
           }
           throw this.error('E3001', expr.span, {
             message: `\`${expr.name}\` is used before it is given a value`,

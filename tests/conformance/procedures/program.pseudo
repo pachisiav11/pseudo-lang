@@ -1,0 +1,24 @@
+// Guide section 8.1. MoveForward and Turn are stubs, as the guide's example
+// assumes a turtle it never defines.
+
+PROCEDURE MoveForward(Distance : INTEGER)
+   OUTPUT "forward ", Distance
+ENDPROCEDURE
+
+PROCEDURE Turn(Degrees : INTEGER)
+   OUTPUT "turn ", Degrees
+ENDPROCEDURE
+
+PROCEDURE DefaultSquare()
+   CALL Square(100)
+ENDPROCEDURE
+
+PROCEDURE Square(Size : INTEGER)
+   DECLARE SideCount : INTEGER
+   FOR SideCount <- 1 TO 4
+      CALL MoveForward(Size)
+      CALL Turn(90)
+   NEXT SideCount
+ENDPROCEDURE
+
+CALL Square(10)

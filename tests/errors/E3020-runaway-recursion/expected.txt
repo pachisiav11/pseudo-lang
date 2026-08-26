@@ -1,0 +1,20 @@
+error[E3020]: `Down` has called itself more than 2000 times
+ --> program.pseudo:2:11
+  |
+2 |    RETURN Down(N + 1)
+  |           ^^^^^^^^^^^ too deep
+  |
+help: A recursive subprogram needs a case that stops the recursion.
+
+call stack (innermost first):
+  Down (line 2)
+  Down (line 2)
+  Down (line 2)
+  Down (line 2)
+  Down (line 2)
+  Down (line 2)
+  Down (line 2)
+  Down (line 2)
+  Down (line 2)
+  Down (line 2)
+  ... and 1990 more

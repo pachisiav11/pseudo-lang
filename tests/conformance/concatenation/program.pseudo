@@ -1,0 +1,5 @@
+// Guide section 5.5.
+
+DECLARE Dessert : STRING
+Dessert <- "Summer" & " " & "Pudding"
+OUTPUT Dessert

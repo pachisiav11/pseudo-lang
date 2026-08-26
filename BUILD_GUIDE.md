@@ -228,7 +228,7 @@ Guide §3.2 allows `SavedGame ← NoughtsAndCrosses` for arrays of the same size
 
 Past papers commonly use `LEFT`, `TO_UPPER`, `NUM_TO_STRING`, `STRING_TO_NUM` and similar. The guide defines only `RIGHT`, `LENGTH`, `MID`, `LCASE`, `UCASE`, `INT`, `RAND`, `EOF`.
 
-**[DECISION]** Only the eight guide functions exist by default. Calling anything else is `E3090` ("`LEFT` is not defined in the 9618 pseudocode guide — exam questions define any extra functions they use"). A setting `pseudoLang.extraBuiltins: string[]` (default `[]`) opts in to a documented extension set for teachers who want it. Keep the extension set in a separate module so the strict core stays clean.
+**[DECISION]** Only the eight guide functions exist. Calling anything else is `E3090`, whose help names all eight and points out that an exam question defines any others it uses. There is no opt-in extension set: a student who can call `LEFT` here and not in the exam has been taught the wrong thing, and a question that defines an extra function defines it in pseudocode, which this already runs.
 
 ### 3.15 Strings are 1-indexed
 
@@ -1633,7 +1633,7 @@ Repository `pseudo-lang`. Contents beyond the code:
 
 - `README.md` — what it is, how to install the `.vsix`, a 20-line tour of the language, and a clear statement that this is an unofficial tool that follows the Cambridge 9618 pseudocode guide but is not endorsed by Cambridge.
 - `CHANGELOG.md` — keep-a-changelog format.
-- `LICENSE` — MIT for the code. Note separately that the bundled PDF is © Cambridge University Press & Assessment and is included under the copying permission granted to registered centres; if that is a concern, replace it with a link and a checksum instead of the file.
+- `LICENSE` — MIT for the code. **[DECISION]** The Cambridge guide is **not** redistributed: `*.pdf` and `guide.txt` are gitignored, and the README says where to download it instead. The guide is © Cambridge University Press & Assessment, it is freely available from them, and a repository that does not carry it cannot get the permissions wrong.
 - `docs/DEVIATIONS.md` — extract every **[DECISION]** and **[DEVIATION]** from this guide into a user-facing page. Students and teachers need to know where the implementation had to choose.
 
 ### 21.4 Release workflow
@@ -1657,7 +1657,7 @@ Every code example in the Cambridge guide, with its expected behaviour. Transcri
 
 | Case | Guide § | Notes |
 |------|---------|-------|
-| `swap-procedure` | 1.5, 8.3 | `BYREF X` changes, `Y` does not |
+| `swap-procedure` | 1.5, 8.3 | Both change: `Y` inherits `BYREF` from `X` (see [§6, M5](#6-milestones)) |
 | `variable-declarations` | 2.4 | three `DECLARE`s, no output; must not error |
 | `constants` | 2.5 | `HourlyRate` and `DefaultText`; assigning to one → `E3004` |
 | `assignments` | 2.6 | `Counter ← Counter + 1`, `TotalToPay ← NumberOfHours * HourlyRate` |

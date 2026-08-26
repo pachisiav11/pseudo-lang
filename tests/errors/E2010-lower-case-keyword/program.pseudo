@@ -1,0 +1,5 @@
+DECLARE Found : BOOLEAN
+Found <- TRUE
+if Found THEN
+   OUTPUT "yes"
+ENDIF

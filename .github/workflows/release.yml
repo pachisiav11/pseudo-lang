@@ -1,0 +1,50 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - run: pnpm test
+      - run: pnpm package
+
+      # The tag must match the version in the manifest, or people download a
+      # .vsix whose number does not match the release they took it from.
+      - name: Check the tag matches the extension version
+        run: |
+          manifest=$(node -p "require('./packages/vscode/package.json').version")
+          tag="${GITHUB_REF_NAME#v}"
+          if [ "$manifest" != "$tag" ]; then
+            echo "tag $tag does not match packages/vscode/package.json version $manifest" >&2
+            exit 1
+          fi
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: packages/vscode/*.vsix
+          generate_release_notes: true
+          body: |
+            Download the `.vsix` below, then install it with:
+
+            ```
+            code --install-extension pseudo-lang-${{ github.ref_name }}.vsix
+            ```
+
+            Or drag the file into the Extensions view in VS Code.

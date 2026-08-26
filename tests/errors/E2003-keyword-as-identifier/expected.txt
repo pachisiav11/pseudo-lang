@@ -1,0 +1,6 @@
+error[E2003]: `SET` is a reserved keyword and cannot be used as an identifier
+ --> program.pseudo:1:9
+  |
+1 | DECLARE SET : INTEGER
+  |         ^^^ reserved keyword
+  |

@@ -1,0 +1,2 @@
+DECLARE Result : INTEGER
+Result <- 7.5 DIV 2

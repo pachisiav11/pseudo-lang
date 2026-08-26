@@ -1,0 +1,5 @@
+PROCEDURE Report()
+   RETURN 1
+ENDPROCEDURE
+
+CALL Report()

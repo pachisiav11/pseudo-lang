@@ -1,0 +1,15 @@
+error[E2060]: relational operators cannot be chained
+ --> program.pseudo:3:12
+  |
+3 | IF 0 < Age < 20 THEN
+  |            ^ a second comparison
+  |
+help: Write the two comparisons separately and join them with AND,
+      for example (a < b) AND (b < c).
+
+error[E2012]: unexpected keyword `ENDIF`
+ --> program.pseudo:5:1
+  |
+5 | ENDIF
+  | ^^^^^ not valid here
+  |

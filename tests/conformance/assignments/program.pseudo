@@ -1,0 +1,15 @@
+// Guide section 2.6.
+
+CONSTANT HourlyRate = 6.50
+
+DECLARE Counter : INTEGER
+DECLARE NumberOfHours : REAL
+DECLARE TotalToPay : REAL
+
+Counter <- 0
+Counter <- Counter + 1
+NumberOfHours <- 4.0
+TotalToPay <- NumberOfHours * HourlyRate
+
+OUTPUT Counter
+OUTPUT TotalToPay

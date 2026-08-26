@@ -1,0 +1,2 @@
+DECLARE LineOfText : STRING
+READFILE "FileA.txt", LineOfText

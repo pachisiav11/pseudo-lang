@@ -1,0 +1,5 @@
+DECLARE Count : INTEGER
+Count <- 1
+IF Count THEN
+   OUTPUT "yes"
+ENDIF

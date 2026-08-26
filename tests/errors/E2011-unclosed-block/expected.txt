@@ -1,0 +1,7 @@
+error[E2011]: `IF` on line 3 is never closed
+ --> program.pseudo:3:1
+  |
+3 | IF Count > 0 THEN
+  | ^^ opened here
+  |
+help: Expected `ELSE` or `ENDIF` before end of file.

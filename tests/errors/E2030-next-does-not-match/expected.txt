@@ -1,0 +1,7 @@
+error[E2030]: `NEXT Other` does not match `FOR Index`
+ --> program.pseudo:5:6
+  |
+5 | NEXT Other
+  |      ^^^^^ expected `Index`
+  |
+help: The FOR loop on line 3 counts with `Index`.

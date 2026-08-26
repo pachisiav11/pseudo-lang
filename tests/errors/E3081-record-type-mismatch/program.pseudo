@@ -1,0 +1,13 @@
+TYPE StudentRecord
+   DECLARE Name : STRING
+ENDTYPE
+
+TYPE TeacherRecord
+   DECLARE Name : STRING
+ENDTYPE
+
+DECLARE Pupil : StudentRecord
+DECLARE Staff : TeacherRecord
+
+Staff.Name <- "Ada"
+Pupil <- Staff

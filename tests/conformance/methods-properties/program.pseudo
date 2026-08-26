@@ -1,0 +1,29 @@
+// Guide section 10.1.
+//
+// The guide declares GetAttempts PRIVATE and then calls it from outside the
+// class. Its own prose rule wins: "Methods and properties can be assumed to be
+// public unless otherwise stated", so a method that is called from outside is
+// declared PUBLIC here.
+
+CLASS Player
+   PRIVATE Attempts : INTEGER
+
+   PUBLIC PROCEDURE NEW()
+      Attempts <- 3
+   ENDPROCEDURE
+
+   PUBLIC PROCEDURE SetAttempts(Number : INTEGER)
+      Attempts <- Number
+   ENDPROCEDURE
+
+   PUBLIC FUNCTION GetAttempts() RETURNS INTEGER
+      RETURN Attempts
+   ENDFUNCTION
+ENDCLASS
+
+DECLARE Player1 : Player
+Player1 <- NEW Player()
+
+OUTPUT Player1.GetAttempts()
+Player1.SetAttempts(5)
+OUTPUT Player1.GetAttempts()

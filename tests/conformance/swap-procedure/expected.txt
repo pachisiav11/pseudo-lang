@@ -1,0 +1,2 @@
+After SWAP: 2 1
+After HALFSWAP: 2 2

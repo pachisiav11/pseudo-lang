@@ -1,0 +1,8 @@
+error[E3013]: cannot compare CHAR with STRING
+ --> program.pseudo:5:8
+  |
+5 | OUTPUT Letter = Word
+  |        ^^^^^^^^^^^^^ incompatible types
+  |
+help: CHAR and STRING are different types. A CHAR uses single quotes and
+      a STRING uses double quotes.

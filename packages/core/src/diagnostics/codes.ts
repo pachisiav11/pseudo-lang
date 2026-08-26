@@ -34,6 +34,7 @@ export const DIAGNOSTICS = {
   E2082: '`CALL` cannot be used with a function',
   E2083: 'procedures must be called with `CALL`',
   E2084: 'expected a type',
+  E2085: 'an array has one or two dimensions',
 
   // ---- runtime ----
   E3001: 'variable is used before it is given a value',

@@ -1,0 +1,7 @@
+error[E2041]: OTHERWISE must be the last case
+ --> program.pseudo:5:4
+  |
+5 |    1 : OUTPUT "one"
+  |    ^ comes after OTHERWISE
+  |
+help: Move the OTHERWISE clause to the end, just before ENDCASE.

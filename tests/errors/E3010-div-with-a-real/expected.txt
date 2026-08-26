@@ -1,0 +1,7 @@
+error[E3010]: `DIV` needs two INTEGER values, found REAL and INTEGER
+ --> program.pseudo:2:11
+  |
+2 | Result <- 7.5 DIV 2
+  |           ^^^^^^^^^ whole numbers only
+  |
+help: Use INT(x) to take the whole part of a REAL first.

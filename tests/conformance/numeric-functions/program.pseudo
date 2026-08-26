@@ -1,0 +1,11 @@
+// Guide section 5.6.
+//
+// RAND(x) returns a REAL in [0, x). The seed is fixed in args.json so the
+// value is reproducible; what is pinned here is the range, not the number.
+
+DECLARE Roll : REAL
+
+OUTPUT INT(27.5415)
+
+Roll <- RAND(87)
+OUTPUT Roll >= 0.0 AND Roll < 87.0

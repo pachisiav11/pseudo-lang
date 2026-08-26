@@ -1,0 +1,6 @@
+error[E3001]: `Total` is used before it is given a value
+ --> program.pseudo:2:8
+  |
+2 | OUTPUT Total
+  |        ^^^^^ declared but never assigned
+  |

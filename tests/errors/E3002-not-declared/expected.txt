@@ -1,0 +1,8 @@
+error[E3002]: `Total` is not declared
+ --> program.pseudo:1:8
+  |
+1 | OUTPUT Total
+  |        ^^^^^ not declared
+  |
+help: Declare it first, for example:
+      DECLARE Total : INTEGER

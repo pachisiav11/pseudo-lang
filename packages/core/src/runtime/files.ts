@@ -1,3 +1,4 @@
+import type { Span } from '../diagnostics/error';
 import type { FileMode } from '../parser/ast';
 import type { PValue } from './value';
 
@@ -7,6 +8,8 @@ export interface OpenFile {
   /** The resolved path on disk. */
   path: string;
   mode: FileMode;
+  /** Where it was opened, so a file left open can be pointed at. */
+  openedAt: Span;
 
   // READ
   lines?: string[];

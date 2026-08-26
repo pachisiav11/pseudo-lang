@@ -1,0 +1,8 @@
+error[E3081]: `Pupil` holds a `StudentRecord`, but this is a `TeacherRecord`
+  --> program.pseudo:13:1
+   |
+13 | Pupil <- Staff
+   | ^^^^^^^^^^^^^^ this is a TeacherRecord
+   |
+help: Two record types are different types even when their fields
+      match.

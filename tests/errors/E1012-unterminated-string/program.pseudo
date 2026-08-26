@@ -1,0 +1,2 @@
+DECLARE Greeting : STRING
+Greeting <- "hello

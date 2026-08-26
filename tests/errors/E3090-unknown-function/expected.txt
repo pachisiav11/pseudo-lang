@@ -1,0 +1,8 @@
+error[E3090]: `SQRT` is not a known function
+ --> program.pseudo:1:8
+  |
+1 | OUTPUT SQRT(16)
+  |        ^^^^^^^^ not defined
+  |
+help: The 9618 guide defines RIGHT, LENGTH, MID, LCASE, UCASE, INT,
+      RAND and EOF. An exam question defines any others it uses.
