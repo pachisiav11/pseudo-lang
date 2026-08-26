@@ -18,3 +18,4 @@ export * from './run';
 export * from './testing';
 export * from './runtime/files';
 export * from './runtime/builtins';
+export * from './runtime/objects';

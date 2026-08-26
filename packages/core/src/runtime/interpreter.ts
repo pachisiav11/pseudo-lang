@@ -16,10 +16,21 @@ import {
   isEmptySlot,
   slotBytes,
 } from './files';
+import {
+  type Access,
+  type ClassInfo,
+  type ClassMethod,
+  CONSTRUCTOR,
+  allFields,
+  findField,
+  findMethod,
+  isSubclassOf,
+} from './objects';
 import { applyBinary, applyUnary } from './operators';
 import { Scope } from './scope';
 import { type Bound, type PType, elementCount, sameType, typeName } from './types';
 import {
+  type ObjectValue,
   type PValue,
   assignable,
   bool,
@@ -33,6 +44,10 @@ import {
   typeOfValue,
   valueTypeName,
 } from './value';
+
+function assertNever(value: never): never {
+  throw new Error(`unhandled node: ${JSON.stringify(value)}`);
+}
 
 export interface Subprogram {
   decl: SubprogramDecl;
@@ -58,6 +73,10 @@ export class Interpreter {
   readonly enumMembers = new Map<string, { typeName: string; name: string; ordinal: number }>();
   private readonly resolvedTypes = new Map<string, PType>();
   readonly files = new Map<string, OpenFile>();
+  readonly classes = new Map<string, ClassInfo>();
+  /** The object and declaring class of each running method, innermost last. */
+  private readonly receivers: { obj: ObjectValue; cls: ClassInfo }[] = [];
+  private readonly objectScopes = new WeakMap<ObjectValue, Scope>();
   private readonly frames: Frame[] = [];
   /** Local scopes by frame index, so the debugger can list them. */
   readonly scopesByFrame = new Map<number, Scope>();
@@ -111,6 +130,23 @@ export class Interpreter {
         continue;
       }
 
+      if (stmt.kind === 'ClassDecl') {
+        const key = stmt.decl.name.toLowerCase();
+        if (this.classes.has(key)) {
+          throw this.error('E3003', stmt.decl.span, {
+            message: `class \`${stmt.decl.name}\` is already defined`,
+            label: 'defined twice',
+          });
+        }
+        this.classes.set(key, {
+          name: stmt.decl.name,
+          parent: null,
+          fields: new Map(stmt.decl.fields.map((f) => [f.name.toLowerCase(), f])),
+          methods: new Map(),
+        });
+        continue;
+      }
+
       if (stmt.kind === 'ProcDecl' || stmt.kind === 'FuncDecl') {
         const key = stmt.decl.name.toLowerCase();
         const existing = this.subprograms.get(key);
@@ -121,6 +157,39 @@ export class Interpreter {
           });
         }
         this.subprograms.set(key, { decl: stmt.decl, isFunction: stmt.kind === 'FuncDecl' });
+      }
+    }
+
+    // A second pass links parents and methods, so INHERITS may name a class
+    // declared further down.
+    for (const stmt of body) {
+      if (stmt.kind !== 'ClassDecl') continue;
+      const cls = this.classes.get(stmt.decl.name.toLowerCase());
+      if (cls === undefined) continue;
+
+      if (stmt.decl.inherits !== undefined) {
+        const parent = this.classes.get(stmt.decl.inherits.toLowerCase());
+        if (parent === undefined) {
+          throw this.error('E3101', stmt.decl.span, {
+            message: `\`${stmt.decl.name}\` inherits from \`${stmt.decl.inherits}\`, which is not a class`,
+            label: 'unknown parent class',
+          });
+        }
+        if (isSubclassOf(parent, cls)) {
+          throw this.error('E3101', stmt.decl.span, {
+            message: `\`${stmt.decl.name}\` and \`${parent.name}\` inherit from each other`,
+            label: 'circular inheritance',
+          });
+        }
+        cls.parent = parent;
+      }
+
+      for (const method of stmt.decl.methods) {
+        cls.methods.set(method.name.toLowerCase(), {
+          decl: method,
+          access: method.access ?? 'PUBLIC',
+          owner: cls,
+        });
       }
     }
   }
@@ -169,11 +238,13 @@ export class Interpreter {
         return this.execDefine(stmt, scope);
       case 'FileStmt':
         return this.execFileStmt(stmt, scope);
-      default:
-        throw this.error('E2002', stmt.span, {
-          message: `\`${stmt.kind}\` is not supported yet`,
-        });
+      case 'ClassDecl':
+        return; // registered by hoist()
+      case 'MethodCallStmt':
+        return this.execMethodCallStmt(stmt, scope);
     }
+    // Every Stmt kind is handled above; this keeps that true as the AST grows.
+    return assertNever(stmt);
   }
 
   // ------------------------------------------------------------- statements
@@ -222,6 +293,17 @@ export class Interpreter {
         message: `\`${cell.name}\` is a constant and cannot be changed`,
         label: 'constant',
       });
+    }
+    if (cell.declared.k === 'CLASS' && value.t === 'OBJECT') {
+      const declared = this.classes.get(cell.declared.name.toLowerCase());
+      const actual = this.classes.get(value.obj.className.toLowerCase());
+      if (declared !== undefined && !isSubclassOf(actual ?? null, declared)) {
+        throw this.error('E3012', span, {
+          message: `cannot store a \`${value.obj.className}\` in \`${cell.name}\`, which is a \`${cell.declared.name}\``,
+          label: `this is a ${value.obj.className}`,
+          help: `\`${value.obj.className}\` does not inherit from \`${cell.declared.name}\`.`,
+        });
+      }
     }
     if (!assignable(cell.declared, value)) {
       throw this.error('E3012', span, {
@@ -346,6 +428,154 @@ export class Interpreter {
 
     const cell = scope.define(stmt.name, setType, true);
     cell.value = { t: 'SET', typeName: setType.name, members };
+  }
+
+  // ----------------------------------------------------------------- objects
+
+  private classNamed(name: string, span: Span): ClassInfo {
+    const cls = this.classes.get(name.toLowerCase());
+    if (cls === undefined) {
+      throw this.error('E3101', span, {
+        message: `there is no class called \`${name}\``,
+        label: 'unknown class',
+      });
+    }
+    return cls;
+  }
+
+  /** Binds the object's field cells so a method body sees them unqualified. */
+  private objectScope(obj: ObjectValue): Scope {
+    const cached = this.objectScopes.get(obj);
+    if (cached !== undefined) return cached;
+    const scope = new Scope(this.globals, 'object');
+    for (const cell of obj.fields.values()) scope.bind(cell.name, cell);
+    this.objectScopes.set(obj, scope);
+    return scope;
+  }
+
+  private async construct(
+    expr: Extract<Expr, { kind: 'New' }>,
+    scope: Scope,
+  ): Promise<PValue> {
+    const cls = this.classNamed(expr.className, expr.span);
+
+    const fields = new Map<string, Cell>();
+    for (const field of allFields(cls)) {
+      const type = await this.resolveType(field.typeRef, scope);
+      const cell = new Cell(type, undefined, field.name);
+      cell.value = await this.makeValueFor(type, field.name, scope, expr.span);
+      fields.set(field.name.toLowerCase(), cell);
+    }
+
+    const obj: ObjectValue = { className: cls.name, fields };
+    const value: PValue = { t: 'OBJECT', obj };
+
+    const constructor = findMethod(cls, CONSTRUCTOR);
+    if (constructor === undefined) {
+      throw this.error('E3102', expr.span, {
+        message: `\`${cls.name}\` has no NEW method, so an object cannot be created`,
+        label: 'no constructor',
+        help: `Add one:\nPUBLIC PROCEDURE NEW()\n   ...\nENDPROCEDURE`,
+      });
+    }
+
+    await this.invokeMethod(constructor, obj, expr.args, scope, expr.span);
+    return value;
+  }
+
+  private async invokeMethod(
+    method: ClassMethod,
+    obj: ObjectValue,
+    args: Expr[],
+    callerScope: Scope,
+    span: Span,
+  ): Promise<PValue | undefined> {
+    this.receivers.push({ obj, cls: method.owner });
+    try {
+      return await this.invoke(
+        { decl: method.decl, isFunction: method.decl.returns !== undefined },
+        args,
+        callerScope,
+        span,
+        this.objectScope(obj),
+      );
+    } finally {
+      this.receivers.pop();
+    }
+  }
+
+  /** Resolves the receiver and method for `Target.Name(...)`. */
+  private async resolveMethodCall(
+    target: Expr,
+    name: string,
+    scope: Scope,
+    span: Span,
+  ): Promise<{ method: ClassMethod; obj: ObjectValue }> {
+    if (target.kind === 'Ident' && target.name === 'SUPER') {
+      const current = this.receivers.at(-1);
+      if (current === undefined) {
+        throw this.error('E3103', span, {
+          message: '`SUPER` can only be used inside a class',
+          label: 'not inside a class',
+        });
+      }
+      if (current.cls.parent === null) {
+        throw this.error('E3104', span, {
+          message: `\`${current.cls.name}\` does not inherit from anything, so it has no SUPER`,
+          label: 'no parent class',
+          help: `Add a parent class:\nCLASS ${current.cls.name} INHERITS SomeClass`,
+        });
+      }
+      const method = findMethod(current.cls.parent, name);
+      if (method === undefined) {
+        throw this.error('E3073', span, {
+          message: `\`${current.cls.parent.name}\` has no method called \`${name}\``,
+          label: 'unknown method',
+        });
+      }
+      return { method, obj: current.obj };
+    }
+
+    const receiver = await this.evaluate(target, scope);
+    if (receiver.t !== 'OBJECT') {
+      throw this.error('E3072', target.span, {
+        message: `\`${describeTarget(target)}\` is ${valueTypeName(receiver)}, so it has no methods`,
+        label: 'not an object',
+      });
+    }
+
+    const cls = this.classNamed(receiver.obj.className, target.span);
+    // Dispatch on the object's actual class, so a subclass override wins.
+    const method = findMethod(cls, name);
+    if (method === undefined) {
+      throw this.error('E3073', span, {
+        message: `\`${cls.name}\` has no method called \`${name}\``,
+        label: 'unknown method',
+        help: `Its methods are: ${[...collectMethodNames(cls)].join(', ') || '(none)'}.`,
+      });
+    }
+    this.checkAccess(method.access, method.owner, name, 'method', span);
+    return { method, obj: receiver.obj };
+  }
+
+  private async execMethodCallStmt(
+    stmt: Extract<Stmt, { kind: 'MethodCallStmt' }>,
+    scope: Scope,
+  ): Promise<void> {
+    const { method, obj } = await this.resolveMethodCall(
+      stmt.target,
+      stmt.method,
+      scope,
+      stmt.span,
+    );
+    if (method.decl.returns !== undefined) {
+      throw this.error('E3106', stmt.span, {
+        message: `\`${method.decl.name}\` is a FUNCTION, so its result must be used`,
+        label: 'result discarded',
+        help: `Use it in an expression:\nOUTPUT ${describeTarget(stmt.target)}.${stmt.method}(...)`,
+      });
+    }
+    await this.invokeMethod(method, obj, stmt.args, scope, stmt.span);
   }
 
   // ---------------------------------------------------------- file handling
@@ -981,6 +1211,13 @@ export class Interpreter {
         const memo = this.resolvedTypes.get(key);
         if (memo !== undefined) return memo;
 
+        const cls = this.classes.get(key);
+        if (cls !== undefined) {
+          const asClass: PType = { k: 'CLASS', name: cls.name };
+          this.resolvedTypes.set(key, asClass);
+          return asClass;
+        }
+
         const decl = this.typeDecls.get(key);
         if (decl === undefined) {
           throw this.error('E3061', ref.span, {
@@ -1187,6 +1424,31 @@ export class Interpreter {
         return value;
       }
 
+      case 'New':
+        return this.construct(expr, scope);
+
+      case 'MethodCall': {
+        const { method, obj } = await this.resolveMethodCall(
+          expr.target,
+          expr.method,
+          scope,
+          expr.span,
+        );
+        if (method.decl.returns === undefined) {
+          throw this.error('E3105', expr.span, {
+            message: `\`${method.decl.name}\` is a PROCEDURE, so it has no value to use here`,
+            label: 'a procedure, not a function',
+          });
+        }
+        const value = await this.invokeMethod(method, obj, expr.args, scope, expr.span);
+        if (value === undefined) {
+          throw this.error('E3095', expr.span, {
+            message: `\`${method.decl.name}\` did not return a value`,
+          });
+        }
+        return value;
+      }
+
       case 'Binary': {
         const left = await this.evaluate(expr.left, scope);
         // AND and OR do not short-circuit in the guide, but evaluating the
@@ -1196,11 +1458,8 @@ export class Interpreter {
         return applyBinary(expr.op, left, right, expr.span);
       }
 
-      default:
-        throw this.error('E3090', expr.span, {
-          message: `\`${expr.kind}\` is not supported yet`,
-        });
     }
+    return assertNever(expr);
   }
 
   // ----------------------------------------------------------------- arrays
@@ -1278,13 +1537,44 @@ export class Interpreter {
     });
   }
 
-  /** Overridden in M8, when classes exist. */
-  protected async objectFieldCell(
-    _container: Extract<PValue, { t: 'OBJECT' }>,
+  private async objectFieldCell(
+    container: Extract<PValue, { t: 'OBJECT' }>,
     expr: Extract<Expr, { kind: 'Member' }>,
     _scope: Scope,
   ): Promise<Cell> {
-    throw this.error('E3073', expr.span, { message: 'objects are not supported yet' });
+    const cls = this.classes.get(container.obj.className.toLowerCase());
+    const found = findField(cls ?? null, expr.field);
+    if (found === undefined) {
+      throw this.error('E3073', expr.span, {
+        message: `\`${container.obj.className}\` has no property called \`${expr.field}\``,
+        label: 'unknown property',
+      });
+    }
+    this.checkAccess(found.field.access, found.owner, expr.field, 'property', expr.span);
+
+    const cell = container.obj.fields.get(expr.field.toLowerCase());
+    if (cell === undefined) {
+      throw this.error('E3073', expr.span, { message: `\`${expr.field}\` has no storage` });
+    }
+    return cell;
+  }
+
+  /** PRIVATE members are reachable only from inside the declaring class. */
+  private checkAccess(
+    access: Access,
+    owner: ClassInfo,
+    name: string,
+    what: string,
+    span: Span,
+  ): void {
+    if (access === 'PUBLIC') return;
+    const current = this.receivers.at(-1)?.cls ?? null;
+    if (isSubclassOf(current, owner)) return;
+    throw this.error('E3100', span, {
+      message: `\`${name}\` is a PRIVATE ${what} of \`${owner.name}\``,
+      label: 'private',
+      help: `It can only be used inside \`${owner.name}\` or a class that inherits from it.\nGive the class a PUBLIC method that reaches it.`,
+    });
   }
 
   private async derefCell(
@@ -1358,6 +1648,16 @@ function narrowScalar(declared: PType, value: PValue): PValue {
   if (declared.k === 'INTEGER' && value.t === 'REAL') return int(Math.trunc(value.v));
   if (declared.k === 'CHAR' && value.t === 'STRING') return char(value.v);
   return value;
+}
+
+function collectMethodNames(cls: ClassInfo): string[] {
+  const names: string[] = [];
+  for (let c: ClassInfo | null = cls; c !== null; c = c.parent) {
+    for (const method of c.methods.values()) {
+      if (method.access === 'PUBLIC') names.push(method.decl.name);
+    }
+  }
+  return names;
 }
 
 /** Types whose storage DECLARE creates up front rather than leaving unset. */

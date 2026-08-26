@@ -6,6 +6,8 @@ import {
   type ArrayDim,
   type BinOp,
   type CaseClause,
+  type ClassDeclaration,
+  type ClassField,
   type Expr,
   type FileMode,
   type FileOp,
@@ -144,6 +146,15 @@ export class Parser {
     });
   }
 
+  /**
+   * Constructors are called NEW, which is also a keyword, so the subprogram
+   * name and member name positions accept it.
+   */
+  private expectMemberName(): Token {
+    if (this.checkKeyword('NEW')) return this.advance();
+    return this.expectIdent();
+  }
+
   private endOfLine(): void {
     if (this.match('NEWLINE')) return;
     if (this.check('EOF')) return;
@@ -278,6 +289,11 @@ export class Parser {
         case 'GETRECORD':
         case 'PUTRECORD':
           return this.parseFileStmt();
+        case 'CLASS':
+          return this.parseClass();
+        case 'SUPER':
+          // SUPER.NEW(...) and SUPER.Method(...) are complete statements.
+          return this.parseAssignment();
         default:
           break;
       }
@@ -348,6 +364,18 @@ export class Parser {
 
   private parseAssignment(): Stmt {
     const target = this.parsePostfix();
+
+    // The guide writes method calls without CALL: `Player.SetAttempts(5)`.
+    if (target.kind === 'MethodCall' && !this.check('ASSIGN')) {
+      this.endOfLine();
+      return {
+        kind: 'MethodCallStmt',
+        target: target.target,
+        method: target.method,
+        args: target.args,
+        span: target.span,
+      };
+    }
 
     if (this.check('EQ')) {
       const eq = this.current;
@@ -463,6 +491,71 @@ export class Parser {
       span: mergeSpans(start, nextTok.span),
     };
     return step === undefined ? stmt : { ...stmt, step };
+  }
+
+  // ----------------------------------------------------------------- classes
+
+  private parseClass(): Stmt {
+    const start = this.advance().span; // CLASS
+    const name = this.expectIdent();
+
+    let inherits: string | undefined;
+    if (this.matchKeyword('INHERITS') !== null) inherits = this.expectIdent().text;
+    this.endOfLine();
+
+    const fields: ClassField[] = [];
+    const methods: SubprogramDecl[] = [];
+
+    this.openBlocks.push({ keyword: 'CLASS', expected: 'ENDCLASS', span: start });
+    this.skipNewlines();
+
+    while (!this.check('EOF') && !this.checkKeyword('ENDCLASS')) {
+      const before = this.pos;
+      try {
+        // The guide: members "can be assumed to be public unless otherwise
+        // stated".
+        const accessTok = this.matchKeyword('PUBLIC', 'PRIVATE');
+        const access = accessTok === 'PRIVATE' ? 'PRIVATE' : 'PUBLIC';
+
+        if (this.checkKeyword('PROCEDURE', 'FUNCTION')) {
+          const isFunction = this.current.text === 'FUNCTION';
+          const stmt = this.parseSubprogram(isFunction, access);
+          methods.push(stmt.kind === 'ProcDecl' || stmt.kind === 'FuncDecl' ? stmt.decl : (() => {
+            throw new StatementError();
+          })());
+        } else {
+          // A field: `PRIVATE Name : STRING`, with no DECLARE keyword.
+          const fieldName = this.expectIdent();
+          this.expect('COLON', ':');
+          const typeRef = this.parseTypeRef();
+          this.endOfLine();
+          fields.push({
+            name: fieldName.text,
+            typeRef,
+            access,
+            span: mergeSpans(fieldName.span, typeRef.span),
+          });
+        }
+      } catch (err) {
+        if (!(err instanceof StatementError)) throw err;
+        this.synchronise();
+      }
+      if (this.pos === before) this.advance();
+      this.skipNewlines();
+    }
+
+    this.openBlocks.pop();
+    const end = this.expect('KEYWORD', 'ENDCLASS');
+    this.endOfLine();
+
+    const decl: ClassDeclaration = {
+      name: name.text,
+      fields,
+      methods,
+      span: mergeSpans(start, end.span),
+    };
+    if (inherits !== undefined) decl.inherits = inherits;
+    return { kind: 'ClassDecl', decl, span: decl.span };
   }
 
   // ---------------------------------------------------------- file handling
@@ -644,7 +737,7 @@ export class Parser {
       });
     }
 
-    const name = this.expectIdent();
+    const name = this.expectMemberName();
     const params = this.parseParamList(isFunction);
 
     let returns: TypeRef | undefined;
@@ -1018,7 +1111,7 @@ export class Parser {
 
       if (this.check('DOT')) {
         this.advance();
-        const field = this.expectIdent();
+        const field = this.expectMemberName();
         if (this.check('LPAREN')) {
           const args = this.parseArgList();
           expr = {
@@ -1114,6 +1207,25 @@ export class Parser {
     if (tok.text === 'TRUE' || tok.text === 'FALSE') {
       this.advance();
       return { kind: 'BoolLit', value: tok.text === 'TRUE', span: tok.span };
+    }
+
+    if (tok.text === 'NEW') {
+      this.advance();
+      const className = this.expectIdent();
+      const args = this.check('LPAREN') ? this.parseArgList() : { args: [], span: className.span };
+      return {
+        kind: 'New',
+        className: className.text,
+        args: args.args,
+        span: mergeSpans(tok.span, args.span),
+      };
+    }
+
+    // SUPER is only ever the target of a member access, which parsePostfix
+    // handles; representing it as an identifier keeps that path uniform.
+    if (tok.text === 'SUPER') {
+      this.advance();
+      return { kind: 'Ident', name: 'SUPER', span: tok.span };
     }
 
     // The eight library functions are keywords but are called like functions.

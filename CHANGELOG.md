@@ -35,3 +35,6 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - M7: file handling. Text files in READ, WRITE and APPEND modes with EOF, and
   random files with SEEK, GETRECORD and PUTRECORD. A file left open at the end
   of the program is flushed and warned about rather than silently lost.
+- M8: object-oriented programming. CLASS with PUBLIC/PRIVATE members, NEW
+  constructors, INHERITS, SUPER, dynamic dispatch on the object's actual class,
+  and access control that a subclass can pass through.
