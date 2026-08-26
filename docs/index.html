@@ -1,0 +1,821 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Install pseudo-lang for VS Code</title>
+<meta name="description" content="A step-by-step guide to installing the pseudo-lang extension, so you can write Cambridge 9618 and IGCSE pseudocode in VS Code and actually run it.">
+<meta property="og:title" content="Install pseudo-lang for VS Code">
+<meta property="og:description" content="Write Cambridge pseudocode. Press play. Watch it run.">
+<meta property="og:type" content="website">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90' font-family='monospace'%3E%E2%86%90%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --paper:      #FBFAF7;
+  --surface:    #FFFFFF;
+  --surface-2:  #F4F2ED;
+  --ink:        #16141F;
+  --ink-soft:   #565073;
+  --ink-faint:  #8A849F;
+  --line:       #E3DFD6;
+  --line-soft:  #EFECE5;
+  --accent:     #4B39DC;
+  --accent-ink: #FFFFFF;
+  --accent-bg:  #EEEBFF;
+  --amber:      #B5730B;
+  --amber-bg:   #FDF3E0;
+  --green:      #157A4E;
+  --green-bg:   #E4F5EC;
+  --code-bg:    #17151F;
+  --code-ink:   #E8E6F2;
+  --shadow:     0 1px 2px rgba(22,20,31,.05), 0 8px 24px -12px rgba(22,20,31,.18);
+  --radius:     14px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper:     #0E0D13;
+    --surface:   #17151F;
+    --surface-2: #1E1B29;
+    --ink:       #ECEAF5;
+    --ink-soft:  #A9A3C0;
+    --ink-faint: #7C7695;
+    --line:      #2A2639;
+    --line-soft: #221F2F;
+    --accent:     #A091FF;
+    --accent-ink: #14111F;
+    --accent-bg:  #211C3D;
+    --amber:      #F0B429;
+    --amber-bg:   #2C2210;
+    --green:      #55D99A;
+    --green-bg:   #10281E;
+    --code-bg:    #100E17;
+    --code-ink:   #E8E6F2;
+    --shadow:     0 1px 2px rgba(0,0,0,.4), 0 8px 24px -12px rgba(0,0,0,.7);
+  }
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; scroll-padding-top: 2rem; }
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: 'Space Grotesk', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font-size: 17px;
+  line-height: 1.65;
+  -webkit-font-smoothing: antialiased;
+}
+.wrap { width: 100%; max-width: 46rem; margin-inline: auto; padding-inline: 1.5rem; }
+
+/* ------------------------------------------------------------------ hero */
+.hero {
+  position: relative;
+  overflow: hidden;
+  border-bottom: 1px solid var(--line);
+  background:
+    repeating-linear-gradient(0deg,  transparent, transparent 27px, var(--line-soft) 27px, var(--line-soft) 28px),
+    repeating-linear-gradient(90deg, transparent, transparent 27px, var(--line-soft) 27px, var(--line-soft) 28px),
+    var(--surface);
+  padding: clamp(3rem, 9vw, 5.5rem) 0 clamp(2.5rem, 6vw, 4rem);
+}
+.hero::after {
+  content: "\2190";
+  position: absolute;
+  right: -2.5rem; top: 50%;
+  transform: translateY(-50%);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: clamp(14rem, 34vw, 26rem);
+  line-height: 1;
+  color: var(--accent);
+  opacity: .05;
+  pointer-events: none;
+  user-select: none;
+}
+.hero > .wrap { position: relative; z-index: 1; }
+
+.eyebrow {
+  display: inline-flex; align-items: center; gap: .55rem;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: .72rem; font-weight: 500;
+  letter-spacing: .09em; text-transform: uppercase;
+  color: var(--accent);
+  background: var(--accent-bg);
+  border-radius: 999px;
+  padding: .4rem .85rem;
+  margin-bottom: 1.5rem;
+}
+h1 {
+  font-size: clamp(2.3rem, 7.5vw, 3.6rem);
+  line-height: 1.05;
+  letter-spacing: -.03em;
+  font-weight: 700;
+  margin: 0 0 1rem;
+}
+h1 .arrow { color: var(--accent); font-family: 'JetBrains Mono', monospace; }
+.lede {
+  font-size: clamp(1.05rem, 2.6vw, 1.2rem);
+  color: var(--ink-soft);
+  max-width: 34rem;
+  margin: 0 0 2rem;
+}
+.lede strong { color: var(--ink); font-weight: 600; }
+
+.cta-row { display: flex; flex-wrap: wrap; gap: .75rem; margin-bottom: 2.75rem; }
+.btn {
+  display: inline-flex; align-items: center; gap: .5rem;
+  font: inherit; font-weight: 600; font-size: .95rem;
+  text-decoration: none;
+  padding: .7rem 1.25rem;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  transition: transform .12s ease, box-shadow .12s ease, background .12s ease;
+}
+.btn:active { transform: translateY(1px); }
+.btn.primary { background: var(--accent); color: var(--accent-ink); box-shadow: var(--shadow); }
+.btn.primary:hover { box-shadow: 0 4px 8px rgba(75,57,220,.2), 0 12px 28px -10px rgba(75,57,220,.45); }
+.btn.ghost { background: transparent; color: var(--ink); border-color: var(--line); }
+.btn.ghost:hover { background: var(--surface-2); }
+
+/* ------------------------------------------------------------------ code */
+.code {
+  position: relative;
+  background: var(--code-bg);
+  color: var(--code-ink);
+  border-radius: var(--radius);
+  border: 1px solid rgba(255,255,255,.07);
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: .855rem;
+  line-height: 1.75;
+  overflow-x: auto;
+  box-shadow: var(--shadow);
+}
+.code pre { margin: 0; padding: 1.15rem 1.3rem; }
+.code.with-bar pre { padding-top: .9rem; }
+.code-bar {
+  display: flex; align-items: center; gap: .5rem;
+  padding: .6rem .8rem .6rem 1.1rem;
+  border-bottom: 1px solid rgba(255,255,255,.08);
+  font-size: .72rem;
+  letter-spacing: .04em;
+  color: #8E88A8;
+}
+.code-bar .name { flex: 1; }
+.dots { display: flex; gap: .3rem; }
+.dots i { width: .55rem; height: .55rem; border-radius: 50%; background: rgba(255,255,255,.14); }
+.copy {
+  font: inherit; font-family: 'JetBrains Mono', monospace; font-size: .7rem;
+  background: rgba(255,255,255,.07); color: #C9C4DC;
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 6px; padding: .25rem .55rem; cursor: pointer;
+  transition: background .12s ease, color .12s ease;
+}
+.copy:hover { background: rgba(255,255,255,.14); color: #fff; }
+.copy.done { background: rgba(85,217,154,.16); border-color: rgba(85,217,154,.3); color: #7EE8B4; }
+
+.k  { color: #C4B4FF; font-weight: 500; }
+.t  { color: #7FD8C6; }
+.s  { color: #F0B429; }
+.n  { color: #FF9E7A; }
+.a  { color: #F0B429; font-weight: 700; }
+.cm { color: #6B6486; font-style: italic; }
+.id { color: #E8E6F2; }
+
+/* --------------------------------------------------------------- layout */
+main { padding: clamp(3rem, 7vw, 4.5rem) 0 2rem; }
+section + section { margin-top: clamp(3rem, 7vw, 4.5rem); }
+h2 {
+  font-size: clamp(1.5rem, 4vw, 1.85rem);
+  letter-spacing: -.02em; font-weight: 700;
+  margin: 0 0 .5rem;
+}
+.section-note { color: var(--ink-soft); margin: 0 0 1.75rem; }
+p { margin: 0 0 1rem; }
+a { color: var(--accent); text-underline-offset: .18em; text-decoration-thickness: 1.5px; }
+
+/* ----------------------------------------------------------- need cards */
+.needs { display: grid; gap: .9rem; }
+.need {
+  display: grid; grid-template-columns: auto 1fr; gap: 1rem;
+  align-items: start;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 1.15rem 1.25rem;
+}
+.need .mark {
+  width: 2rem; height: 2rem; border-radius: 9px;
+  display: grid; place-items: center;
+  font-size: 1rem; font-weight: 700;
+  font-family: 'JetBrains Mono', monospace;
+}
+.need.have .mark { background: var(--green-bg); color: var(--green); }
+.need.get  .mark { background: var(--accent-bg); color: var(--accent); }
+.need h3 { margin: .1rem 0 .3rem; font-size: 1.02rem; font-weight: 600; }
+.need p  { margin: 0; color: var(--ink-soft); font-size: .95rem; }
+.need p + p { margin-top: .5rem; }
+
+/* --------------------------------------------------------------- os tabs */
+.os-switch {
+  display: flex; align-items: center; gap: .75rem;
+  flex-wrap: wrap;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: .4rem .4rem .4rem 1rem;
+  margin: 2rem 0 0;
+  width: fit-content;
+  font-size: .9rem;
+}
+.os-switch .label { color: var(--ink-soft); font-size: .85rem; }
+.os-switch .opts { display: flex; gap: .25rem; }
+.os-switch button {
+  font: inherit; font-size: .875rem; font-weight: 600;
+  border: none; background: transparent; color: var(--ink-soft);
+  padding: .35rem .9rem; border-radius: 999px; cursor: pointer;
+  transition: background .12s ease, color .12s ease;
+}
+.os-switch button:hover { color: var(--ink); }
+.os-switch button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
+
+/* ---------------------------------------------------------------- steps */
+.steps { list-style: none; margin: 1.75rem 0 0; padding: 0; }
+.step { position: relative; padding-left: 3.75rem; padding-bottom: 2.5rem; }
+.step:last-child { padding-bottom: 0; }
+.step::before {
+  content: ""; position: absolute;
+  left: 1.24rem; top: 2.9rem; bottom: .4rem;
+  width: 2px; background: var(--line);
+}
+.step:last-child::before { display: none; }
+.step-num {
+  position: absolute; left: 0; top: .15rem;
+  width: 2.5rem; height: 2.5rem; border-radius: 50%;
+  display: grid; place-items: center;
+  background: var(--surface); color: var(--accent);
+  border: 2px solid var(--line);
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 700; font-size: .95rem;
+  transition: background .15s ease, border-color .15s ease, color .15s ease;
+}
+.step h3 {
+  font-size: 1.2rem; font-weight: 600; letter-spacing: -.015em;
+  margin: .35rem 0 .7rem;
+}
+.step > p, .step > ol, .step > ul { color: var(--ink-soft); }
+.step strong { color: var(--ink); font-weight: 600; }
+.step .code, .step .callout { margin: 1rem 0; }
+.step .btn { margin: .25rem 0 1rem; }
+
+.step ol.sub { margin: 1rem 0; padding-left: 0; list-style: none; counter-reset: sub; }
+.step ol.sub li {
+  counter-increment: sub;
+  position: relative; padding-left: 2rem; margin-bottom: .65rem;
+}
+.step ol.sub li::before {
+  content: counter(sub);
+  position: absolute; left: 0; top: .1rem;
+  width: 1.4rem; height: 1.4rem; border-radius: 5px;
+  background: var(--surface-2); color: var(--ink-faint);
+  display: grid; place-items: center;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: .72rem; font-weight: 600;
+}
+
+.done-toggle {
+  display: inline-flex; align-items: center; gap: .55rem;
+  margin-top: .35rem;
+  font-size: .85rem; font-weight: 500;
+  color: var(--ink-faint);
+  background: none; border: none; padding: 0; cursor: pointer;
+  font-family: inherit;
+}
+.done-toggle .box {
+  width: 1.15rem; height: 1.15rem; border-radius: 5px;
+  border: 1.5px solid var(--line); display: grid; place-items: center;
+  transition: background .15s ease, border-color .15s ease;
+}
+.done-toggle .box::after {
+  content: "\2713"; font-size: .75rem; font-weight: 700;
+  color: transparent; transition: color .15s ease;
+}
+.done-toggle:hover .box { border-color: var(--accent); }
+.step.is-done .step-num { background: var(--green-bg); border-color: var(--green-bg); color: var(--green); }
+.step.is-done .done-toggle .box { background: var(--green); border-color: var(--green); }
+.step.is-done .done-toggle .box::after { color: var(--paper); }
+.step.is-done .done-toggle { color: var(--green); }
+
+/* ------------------------------------------------------------- callouts */
+.callout {
+  border-radius: var(--radius);
+  padding: .95rem 1.15rem;
+  font-size: .93rem;
+  border: 1px solid transparent;
+}
+.callout p { margin: 0; }
+.callout p + p { margin-top: .55rem; }
+.callout .tag {
+  display: block;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: .68rem; letter-spacing: .09em; text-transform: uppercase;
+  font-weight: 600; margin-bottom: .35rem;
+}
+.callout.tip  { background: var(--accent-bg); border-color: color-mix(in srgb, var(--accent) 22%, transparent); }
+.callout.tip  .tag { color: var(--accent); }
+.callout.warn { background: var(--amber-bg); border-color: color-mix(in srgb, var(--amber) 28%, transparent); }
+.callout.warn .tag { color: var(--amber); }
+.callout.good { background: var(--green-bg); border-color: color-mix(in srgb, var(--green) 25%, transparent); }
+.callout.good .tag { color: var(--green); }
+
+/* ------------------------------------------------------------------ kbd */
+kbd {
+  display: inline-block;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: .78em; font-weight: 500;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-bottom-width: 2px;
+  border-radius: 6px;
+  padding: .1em .45em;
+  margin: 0 .06em;
+  color: var(--ink);
+  white-space: nowrap;
+  line-height: 1.5;
+}
+code:not(.code code) {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: .87em;
+  background: var(--surface-2);
+  border-radius: 5px;
+  padding: .12em .4em;
+}
+.ui {
+  font-weight: 600; color: var(--ink);
+  background: var(--surface-2);
+  border-radius: 5px; padding: .08em .4em;
+  white-space: nowrap;
+}
+
+/* ------------------------------------------------------------- features */
+.features { display: grid; gap: .8rem; grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)); }
+.feature {
+  background: var(--surface); border: 1px solid var(--line);
+  border-radius: var(--radius); padding: 1.1rem 1.2rem;
+}
+.feature h3 { margin: 0 0 .35rem; font-size: 1rem; font-weight: 600; display: flex; align-items: baseline; gap: .5rem; }
+.feature h3 .g { font-family: 'JetBrains Mono', monospace; color: var(--accent); font-size: .85em; }
+.feature p { margin: 0; font-size: .92rem; color: var(--ink-soft); }
+
+/* -------------------------------------------------------- troubleshoot */
+details {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  margin-bottom: .6rem;
+  overflow: hidden;
+}
+details[open] { box-shadow: var(--shadow); }
+summary {
+  cursor: pointer; list-style: none;
+  padding: .95rem 1.2rem;
+  font-weight: 600; font-size: .97rem;
+  display: flex; align-items: center; gap: .75rem;
+}
+summary::-webkit-details-marker { display: none; }
+summary::after {
+  content: "+"; margin-left: auto;
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--ink-faint); font-weight: 400; font-size: 1.1rem;
+  transition: transform .18s ease;
+}
+details[open] summary::after { transform: rotate(45deg); }
+summary:hover { background: var(--surface-2); }
+.details-body { padding: 0 1.2rem 1.15rem; color: var(--ink-soft); font-size: .95rem; }
+.details-body p:last-child { margin-bottom: 0; }
+
+/* ----------------------------------------------------------- final card */
+.finale {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 1.75rem;
+  text-align: center;
+  box-shadow: var(--shadow);
+}
+.finale .big {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 2.5rem; color: var(--accent); line-height: 1;
+  display: block; margin-bottom: .75rem;
+}
+.finale h2 { margin-bottom: .5rem; }
+.finale p { color: var(--ink-soft); margin-bottom: 1.25rem; }
+
+/* --------------------------------------------------------------- footer */
+footer {
+  border-top: 1px solid var(--line);
+  margin-top: clamp(3rem, 7vw, 4.5rem);
+  padding: 2rem 0 3rem;
+  font-size: .88rem;
+  color: var(--ink-faint);
+}
+footer .links { display: flex; flex-wrap: wrap; gap: 1.25rem; margin-bottom: 1.25rem; }
+footer .links a { font-weight: 500; }
+footer .fine { line-height: 1.6; max-width: 38rem; }
+footer .fine strong { color: var(--ink-soft); }
+
+@media (max-width: 30rem) {
+  body { font-size: 16px; }
+  .step { padding-left: 3.25rem; }
+  .step-num { width: 2.2rem; height: 2.2rem; font-size: .85rem; }
+  .step::before { left: 1.08rem; }
+  .code { font-size: .78rem; }
+}
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="wrap">
+    <span class="eyebrow">Cambridge 9618 &middot; IGCSE 0478</span>
+    <h1>Write pseudocode.<br>Press play. <span class="arrow">&#8592;</span></h1>
+    <p class="lede">
+      Your textbook pseudocode does not have to stay on paper. Install this free extension
+      and <strong>VS Code will actually run it</strong> &mdash; the same <code>DECLARE</code>,
+      the same <code>FOR</code> loop, the same arrow.
+    </p>
+    <div class="cta-row">
+      <a class="btn primary" href="#install">Set it up &mdash; about 5 minutes</a>
+      <a class="btn ghost" href="https://github.com/pachisiav11/pseudo-lang">See the code on GitHub</a>
+    </div>
+
+    <div class="code with-bar">
+      <div class="code-bar">
+        <span class="dots"><i></i><i></i><i></i></span>
+        <span class="name">totals.pseudo</span>
+      </div>
+<pre><span class="cm">// This runs. Really.</span>
+<span class="k">DECLARE</span> <span class="id">Total</span> : <span class="t">INTEGER</span>
+<span class="k">DECLARE</span> <span class="id">Index</span> : <span class="t">INTEGER</span>
+
+<span class="id">Total</span> <span class="a">&#8592;</span> <span class="n">0</span>
+<span class="k">FOR</span> <span class="id">Index</span> <span class="a">&#8592;</span> <span class="n">1</span> <span class="k">TO</span> <span class="n">10</span>
+   <span class="id">Total</span> <span class="a">&#8592;</span> <span class="id">Total</span> + <span class="id">Index</span>
+<span class="k">NEXT</span> <span class="id">Index</span>
+
+<span class="k">OUTPUT</span> <span class="s">"The total is "</span>, <span class="id">Total</span></pre>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <section id="before">
+    <h2>What you need first</h2>
+    <p class="section-note">Two things. Both free. You probably already have the first one.</p>
+
+    <div class="needs">
+      <div class="need have">
+        <span class="mark">&#10003;</span>
+        <div>
+          <h3>Visual Studio Code</h3>
+          <p>This guide assumes it is already installed on your computer. If it is not, get it
+             from <a href="https://code.visualstudio.com/">code.visualstudio.com</a> first, then
+             come back here.</p>
+        </div>
+      </div>
+
+      <div class="need get">
+        <span class="mark">&#8595;</span>
+        <div>
+          <h3>Node.js &mdash; version 20 or later</h3>
+          <p>Go to <a href="https://nodejs.org/">nodejs.org</a> and click the big
+             <span class="ui">LTS</span> button. Run the installer and click Next through every
+             screen. You will never open Node.js yourself &mdash; it just sits there and does the
+             work behind the play button.</p>
+          <p><strong>If VS Code is open right now, close it after installing Node.js.</strong>
+             It only notices the new install when it starts up fresh.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="install">
+    <h2>Installing the extension</h2>
+    <p class="section-note">
+      This extension is not in the VS Code Marketplace, so you download one file and add it by
+      hand. It takes about a minute.
+    </p>
+
+    <div class="os-switch" role="group" aria-label="Choose your operating system">
+      <span class="label">I am using</span>
+      <span class="opts">
+        <button type="button" data-os="win" aria-pressed="true">Windows</button>
+        <button type="button" data-os="mac" aria-pressed="false">Mac</button>
+      </span>
+    </div>
+
+    <ol class="steps">
+
+      <li class="step" id="step-1" data-step="1">
+        <span class="step-num">1</span>
+        <h3>Download the extension file</h3>
+        <p>
+          Open the <a href="https://github.com/pachisiav11/pseudo-lang/releases/latest">latest
+          release page</a>. Scroll to the bottom, to the part headed
+          <span class="ui">Assets</span>, and click <code>pseudo-lang-0.1.0.vsix</code>.
+        </p>
+        <p>It saves to your Downloads folder like anything else. You do not need to open it.</p>
+        <div class="callout warn">
+          <span class="tag">If your browser complains</span>
+          <p>Some browsers warn about <code>.vsix</code> files because they are an unusual
+             download. Choose <span class="ui">Keep</span> or
+             <span class="ui">Download anyway</span>. The file comes straight from GitHub and is
+             built automatically from source code you can read yourself.</p>
+        </div>
+        <a class="btn primary" href="https://github.com/pachisiav11/pseudo-lang/releases/latest">Open the download page</a>
+        <br>
+        <button class="done-toggle" type="button"><span class="box"></span>Done</button>
+      </li>
+
+      <li class="step" id="step-2" data-step="2">
+        <span class="step-num">2</span>
+        <h3>Add it to VS Code</h3>
+        <p>Open VS Code, then:</p>
+        <ol class="sub">
+          <li>Press <kbd data-key="mod">Ctrl</kbd> <kbd>Shift</kbd> <kbd>X</kbd> to open the
+              <span class="ui">Extensions</span> panel down the side.</li>
+          <li>At the very top of that panel, click the <span class="ui">&hellip;</span> button.</li>
+          <li>Choose <span class="ui">Install from VSIX&hellip;</span> from the menu.</li>
+          <li>Find the file you just downloaded and open it.</li>
+        </ol>
+        <p>VS Code shows a small message in the corner saying it was installed. That is it.</p>
+        <div class="callout tip">
+          <span class="tag">Prefer typing?</span>
+          <p>If you like the terminal, go to your Downloads folder and run
+             <code>code --install-extension pseudo-lang-0.1.0.vsix</code> instead.</p>
+        </div>
+        <button class="done-toggle" type="button"><span class="box"></span>Done</button>
+      </li>
+
+      <li class="step" id="step-3" data-step="3">
+        <span class="step-num">3</span>
+        <h3>Write your first program</h3>
+        <p>
+          Make a new file and <strong>save it as <code>hello.pseudo</code></strong>. The
+          <code>.pseudo</code> ending is what tells VS Code to treat it as pseudocode &mdash;
+          nothing works until you have saved it with that name.
+        </p>
+        <p>Now type this in, or use the copy button:</p>
+
+        <div class="code with-bar">
+          <div class="code-bar">
+            <span class="dots"><i></i><i></i><i></i></span>
+            <span class="name">hello.pseudo</span>
+            <button class="copy" type="button" data-copy="hello">Copy</button>
+          </div>
+<pre id="src-hello"><span class="k">DECLARE</span> <span class="id">Name</span> : <span class="t">STRING</span>
+
+<span class="k">OUTPUT</span> <span class="s">"What is your name? "</span>
+<span class="k">INPUT</span> <span class="id">Name</span>
+<span class="k">OUTPUT</span> <span class="s">"Hello, "</span>, <span class="id">Name</span>, <span class="s">"!"</span></pre>
+        </div>
+
+        <p>The words should change colour as you type them. That is how you know the extension
+           has woken up.</p>
+
+        <div class="callout tip">
+          <span class="tag">About that arrow</span>
+          <p>Pseudocode uses <code>&#8592;</code> to give a variable a value, and there is no such
+             key on your keyboard. <strong>Just type <code>&lt;-</code></strong> &mdash; the two
+             normal characters &mdash; and it becomes a real <code>&#8592;</code> when you save.
+             You can also press <kbd data-key="alt">Alt</kbd> <kbd>-</kbd> at any time.</p>
+        </div>
+        <button class="done-toggle" type="button"><span class="box"></span>Done</button>
+      </li>
+
+      <li class="step" id="step-4" data-step="4">
+        <span class="step-num">4</span>
+        <h3>Run it</h3>
+        <p>
+          Look at the <strong>top right corner of the editor</strong>. There is a
+          <span class="ui">&#9655;</span> play button. Click it.
+        </p>
+        <p>
+          A terminal opens at the bottom of the window and your program starts. It asks for your
+          name &mdash; <strong>click inside the terminal first</strong>, type your name, then
+          press <kbd>Enter</kbd>.
+        </p>
+
+        <div class="code with-bar">
+          <div class="code-bar">
+            <span class="dots"><i></i><i></i><i></i></span>
+            <span class="name">TERMINAL</span>
+          </div>
+<pre><span class="cm">What is your name? </span><span class="s">Priya</span>
+<span class="id">Hello, Priya!</span></pre>
+        </div>
+
+        <div class="callout good">
+          <span class="tag">That is the whole setup</span>
+          <p>Everything below is optional. You have a working pseudocode setup and you never
+             have to come back to this page.</p>
+        </div>
+        <button class="done-toggle" type="button"><span class="box"></span>Done</button>
+      </li>
+
+    </ol>
+  </section>
+
+  <section id="more">
+    <h2>Things worth knowing</h2>
+    <p class="section-note">Four features that will save you time once your programs get longer.</p>
+
+    <div class="features">
+      <div class="feature">
+        <h3><span class="g">F5</span> Watch it run line by line</h3>
+        <p>Click the narrow strip just left of a line number to put a red dot there, then press
+           <kbd>F5</kbd>. The program stops at that line and shows you every variable and what is
+           in it. This is the fastest way to find out why an answer is wrong.</p>
+      </div>
+      <div class="feature">
+        <h3><span class="g">&#9888;</span> Mistakes get underlined</h3>
+        <p>Save the file and anything wrong is underlined in red, with a message explaining what
+           to write instead. You do not have to run the program to find a typo.</p>
+      </div>
+      <div class="feature">
+        <h3><span class="g">TAB</span> Shortcuts for whole blocks</h3>
+        <p>Type <code>if</code> or <code>for</code> or <code>proc</code> and press
+           <kbd>Tab</kbd>. The whole block appears, <code>ENDIF</code> and all, already
+           indented.</p>
+      </div>
+      <div class="feature">
+        <h3><span class="g">A&#8593;</span> Keywords must be capitals</h3>
+        <p><code>IF</code> is a keyword. <code>if</code> is not, and the exam agrees. If a word
+           stays grey when you expected it to change colour, check its capitals.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="trouble">
+    <h2>If something goes wrong</h2>
+    <p class="section-note">Almost every problem is one of these five.</p>
+
+    <details>
+      <summary>The terminal says <code>node is not recognised</code></summary>
+      <div class="details-body">
+        <p>Node.js is missing, or VS Code has not noticed it yet.</p>
+        <p>Install it from <a href="https://nodejs.org/">nodejs.org</a> (the
+           <span class="ui">LTS</span> button), then <strong>close VS Code completely and open it
+           again</strong>. That second part matters more than people expect &mdash; VS Code only
+           looks for Node.js when it starts.</p>
+      </div>
+    </details>
+
+    <details>
+      <summary>Nothing changes colour when I type</summary>
+      <div class="details-body">
+        <p>Check the file name on the tab. It has to end in <code>.pseudo</code>. A file called
+           <code>hello.txt</code>, or an unsaved <code>Untitled-1</code>, is just plain text as
+           far as VS Code is concerned.</p>
+        <p>If the name is right, check your capitals. Keywords only colour in
+           <strong>UPPER CASE</strong>, because that is what the Cambridge guide requires. A grey
+           <code>if</code> is the extension telling you to write <code>IF</code>.</p>
+      </div>
+    </details>
+
+    <details>
+      <summary>There is no play button in the corner</summary>
+      <div class="details-body">
+        <p>Same cause: VS Code does not think this is a pseudocode file. Save it with a
+           <code>.pseudo</code> ending and the button appears.</p>
+        <p>You can also run it from the keyboard: press
+           <kbd data-key="mod">Ctrl</kbd> <kbd>Shift</kbd> <kbd>P</kbd>, type
+           <code>Pseudocode: Run File</code>, and press <kbd>Enter</kbd>.</p>
+      </div>
+    </details>
+
+    <details>
+      <summary>I cannot find <span class="ui">Install from VSIX&hellip;</span></summary>
+      <div class="details-body">
+        <p>It lives behind the <span class="ui">&hellip;</span> button at the top of the
+           <strong>Extensions panel</strong> &mdash; not the menu bar at the top of the window,
+           and not the gear on an individual extension.</p>
+        <p>Open the Extensions panel with <kbd data-key="mod">Ctrl</kbd> <kbd>Shift</kbd>
+           <kbd>X</kbd> first, then look at the very top of that panel, in line with the word
+           <span class="ui">EXTENSIONS</span>.</p>
+      </div>
+    </details>
+
+    <details>
+      <summary>My program asks for input but typing does nothing</summary>
+      <div class="details-body">
+        <p>Click inside the terminal panel at the bottom of the window first. Until you do, your
+           keystrokes are still going to the editor.</p>
+      </div>
+    </details>
+
+    <p style="margin-top:1.5rem">
+      Still stuck? <a href="https://github.com/pachisiav11/pseudo-lang/issues/new">Open an issue
+      on GitHub</a> and say what you did and what happened.
+    </p>
+  </section>
+
+  <section id="finale">
+    <div class="finale">
+      <span class="big">&#8592;</span>
+      <h2>Go and write something</h2>
+      <p>Take a question from a past paper, write the pseudocode answer, and press play. Finding
+         out you were wrong in ten seconds beats finding out in an exam.</p>
+      <a class="btn primary" href="https://github.com/pachisiav11/pseudo-lang/tree/main/examples">Read some example programs</a>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    <div class="links">
+      <a href="https://github.com/pachisiav11/pseudo-lang">Source code</a>
+      <a href="https://github.com/pachisiav11/pseudo-lang/releases/latest">Downloads</a>
+      <a href="https://github.com/pachisiav11/pseudo-lang/blob/main/docs/DEVIATIONS.md">Where the guide leaves gaps</a>
+      <a href="https://github.com/pachisiav11/pseudo-lang/issues">Report a problem</a>
+    </div>
+    <p class="fine">
+      pseudo-lang is a free, open-source tool released under the MIT licence. It follows the
+      Cambridge International AS &amp; A Level Computer Science 9618 pseudocode guide, but it is
+      <strong>unofficial</strong> &mdash; not made, checked or endorsed by Cambridge University
+      Press &amp; Assessment. Nothing it does differently from the guide is examinable.
+    </p>
+  </div>
+</footer>
+
+<script>
+(function () {
+  'use strict';
+
+  // Mac and Windows disagree about the modifier key, and a student reading
+  // "Ctrl" on a Mac will simply not find it.
+  var KEYS = {
+    win: { mod: 'Ctrl', alt: 'Alt' },
+    mac: { mod: 'Cmd',  alt: 'Option' }
+  };
+
+  function applyOs(os) {
+    var keys = KEYS[os] || KEYS.win;
+    document.querySelectorAll('kbd[data-key]').forEach(function (el) {
+      el.textContent = keys[el.dataset.key];
+    });
+    document.querySelectorAll('.os-switch button').forEach(function (b) {
+      b.setAttribute('aria-pressed', String(b.dataset.os === os));
+    });
+    try { localStorage.setItem('pl.os', os); } catch (e) { /* private mode */ }
+  }
+
+  var storedOs = null;
+  try { storedOs = localStorage.getItem('pl.os'); } catch (e) { /* private mode */ }
+  applyOs(storedOs || (/Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent) ? 'mac' : 'win'));
+
+  document.querySelectorAll('.os-switch button').forEach(function (b) {
+    b.addEventListener('click', function () { applyOs(b.dataset.os); });
+  });
+
+  // Ticking a step off survives a reload, so following the guide across two
+  // sittings does not mean working out where you got to.
+  document.querySelectorAll('.step').forEach(function (step) {
+    var key = 'pl.step.' + step.dataset.step;
+    var toggle = step.querySelector('.done-toggle');
+    if (!toggle) return;
+
+    var saved = null;
+    try { saved = localStorage.getItem(key); } catch (e) { /* private mode */ }
+    if (saved === '1') step.classList.add('is-done');
+
+    toggle.addEventListener('click', function () {
+      var done = step.classList.toggle('is-done');
+      try { localStorage.setItem(key, done ? '1' : '0'); } catch (e) { /* private mode */ }
+    });
+  });
+
+  document.querySelectorAll('.copy').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var src = document.getElementById('src-' + btn.dataset.copy);
+      if (!src) return;
+      navigator.clipboard.writeText(src.textContent).then(function () {
+        btn.textContent = 'Copied';
+        btn.classList.add('done');
+        setTimeout(function () {
+          btn.textContent = 'Copy';
+          btn.classList.remove('done');
+        }, 1600);
+      }).catch(function () {
+        btn.textContent = 'Select it';
+      });
+    });
+  });
+})();
+</script>
+
+</body>
+</html>
