@@ -5,10 +5,26 @@
   "version": "0.1.0",
   "publisher": "pseudo-lang",
   "license": "MIT",
-  "repository": { "type": "git", "url": "https://github.com/pachisiav11/pseudo-lang.git" },
-  "engines": { "vscode": "^1.90.0" },
-  "categories": ["Programming Languages", "Debuggers", "Education"],
-  "keywords": ["pseudocode", "cambridge", "9618", "0478", "igcse", "a level"],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/pachisiav11/pseudo-lang.git"
+  },
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": [
+    "Programming Languages",
+    "Debuggers",
+    "Education"
+  ],
+  "keywords": [
+    "pseudocode",
+    "cambridge",
+    "9618",
+    "0478",
+    "igcse",
+    "a level"
+  ],
   "main": "./dist/extension.js",
   "scripts": {
     "build": "node esbuild.mjs",
@@ -20,16 +36,26 @@
   },
   "devDependencies": {
     "@types/vscode": "^1.90.0",
-    "@vscode/vsce": "^3.2.1"
+    "@vscode/vsce": "^3.2.1",
+    "@vscode/debugadapter": "^1.68.0",
+    "@vscode/debugprotocol": "^1.68.0"
   },
   "contributes": {
     "languages": [
       {
         "id": "pseudocode",
-        "aliases": ["Pseudocode", "pseudocode"],
-        "extensions": [".pseudo"],
+        "aliases": [
+          "Pseudocode",
+          "pseudocode"
+        ],
+        "extensions": [
+          ".pseudo"
+        ],
         "configuration": "./language-configuration.json",
-        "icon": { "light": "./icons/file-light.svg", "dark": "./icons/file-dark.svg" }
+        "icon": {
+          "light": "./icons/file-light.svg",
+          "dark": "./icons/file-dark.svg"
+        }
       }
     ],
     "grammars": [
@@ -39,20 +65,56 @@
         "path": "./syntaxes/pseudocode.tmLanguage.json"
       }
     ],
-    "snippets": [{ "language": "pseudocode", "path": "./snippets/pseudocode.json" }],
+    "snippets": [
+      {
+        "language": "pseudocode",
+        "path": "./snippets/pseudocode.json"
+      }
+    ],
     "commands": [
-      { "command": "pseudoLang.run", "title": "Run File", "category": "Pseudocode", "icon": "$(play)" },
-      { "command": "pseudoLang.check", "title": "Check File", "category": "Pseudocode" },
-      { "command": "pseudoLang.insertArrow", "title": "Insert Assignment Arrow", "category": "Pseudocode" }
+      {
+        "command": "pseudoLang.run",
+        "title": "Run File",
+        "category": "Pseudocode",
+        "icon": "$(play)"
+      },
+      {
+        "command": "pseudoLang.check",
+        "title": "Check File",
+        "category": "Pseudocode"
+      },
+      {
+        "command": "pseudoLang.insertArrow",
+        "title": "Insert Assignment Arrow",
+        "category": "Pseudocode"
+      }
     ],
     "menus": {
       "editor/title/run": [
-        { "command": "pseudoLang.run", "when": "resourceLangId == pseudocode", "group": "navigation@1" }
+        {
+          "command": "pseudoLang.run",
+          "when": "resourceLangId == pseudocode",
+          "group": "navigation@1"
+        },
+        {
+          "command": "workbench.action.debug.start",
+          "when": "resourceLangId == pseudocode",
+          "group": "navigation@2"
+        }
       ],
       "commandPalette": [
-        { "command": "pseudoLang.run", "when": "resourceLangId == pseudocode" },
-        { "command": "pseudoLang.check", "when": "resourceLangId == pseudocode" },
-        { "command": "pseudoLang.insertArrow", "when": "resourceLangId == pseudocode" }
+        {
+          "command": "pseudoLang.run",
+          "when": "resourceLangId == pseudocode"
+        },
+        {
+          "command": "pseudoLang.check",
+          "when": "resourceLangId == pseudocode"
+        },
+        {
+          "command": "pseudoLang.insertArrow",
+          "when": "resourceLangId == pseudocode"
+        }
       ]
     },
     "keybindings": [
@@ -73,7 +135,7 @@
         "pseudoLang.insertArrowOnAssign": {
           "type": "boolean",
           "default": true,
-          "description": "Rewrite a typed `<-` into the `\u2190` character when the file is saved."
+          "description": "Rewrite a typed `<-` into the `←` character when the file is saved."
         },
         "pseudoLang.checkOnSave": {
           "type": "boolean",
@@ -97,6 +159,76 @@
         "editor.tabSize": 3,
         "editor.insertSpaces": true
       }
-    }
-  }
+    },
+    "breakpoints": [
+      {
+        "language": "pseudocode"
+      }
+    ],
+    "debuggers": [
+      {
+        "type": "pseudo",
+        "label": "Pseudocode",
+        "languages": [
+          "pseudocode"
+        ],
+        "configurationAttributes": {
+          "launch": {
+            "required": [
+              "program"
+            ],
+            "properties": {
+              "program": {
+                "type": "string",
+                "description": "The .pseudo file to run.",
+                "default": "${file}"
+              },
+              "stopOnEntry": {
+                "type": "boolean",
+                "description": "Stop on the first statement.",
+                "default": true
+              },
+              "strictDeclarations": {
+                "type": "boolean",
+                "description": "Require DECLARE before a variable is used."
+              },
+              "maxCallDepth": {
+                "type": "number",
+                "description": "How deeply a subprogram may call itself."
+              },
+              "randomFileRecordSize": {
+                "type": "number",
+                "description": "Slot size in bytes for random-access files."
+              }
+            }
+          }
+        },
+        "initialConfigurations": [
+          {
+            "type": "pseudo",
+            "request": "launch",
+            "name": "Debug pseudocode file",
+            "program": "${file}",
+            "stopOnEntry": true
+          }
+        ],
+        "configurationSnippets": [
+          {
+            "label": "Pseudocode: Debug the open file",
+            "description": "Run the .pseudo file in the editor under the debugger",
+            "body": {
+              "type": "pseudo",
+              "request": "launch",
+              "name": "Debug pseudocode file",
+              "program": "^\"${file}\"",
+              "stopOnEntry": true
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "activationEvents": [
+    "onDebugResolve:pseudo"
+  ]
 }

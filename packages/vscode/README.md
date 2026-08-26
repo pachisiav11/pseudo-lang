@@ -9,6 +9,8 @@ IGCSE 0478 pseudocode is a subset of 9618, so IGCSE programs run here unchanged.
 
 - Syntax highlighting for `.pseudo` files
 - **Run File** — runs the open program in a terminal, so `INPUT` reads from the keyboard
+- **A step debugger** — breakpoints, step over/into/out, the call stack, and a variables
+  panel that expands arrays, records and objects
 - **Check File** — reports syntax problems in the Problems panel, automatically on save
 - 20 snippets covering every block construct in the guide
 - `<-` is rewritten to `←` when the file is saved, so you never have to reach for the character
@@ -28,6 +30,24 @@ OUTPUT "Hello, ", Name
 
 Press the ▷ button in the editor title bar, or run **Pseudocode: Run File** from the
 Command Palette.
+
+## Debugging
+
+Click in the gutter to set a breakpoint, then press `F5`. No `launch.json` is needed —
+the open `.pseudo` file is debugged.
+
+- The **variables** panel shows every value the way the guide prints it: `4.0` for a
+  REAL, `TRUE`/`FALSE` for a BOOLEAN, `02/01/2005` for a DATE, and `<no value>` for a
+  variable that has been declared but never assigned. Arrays, records, objects, sets and
+  pointers expand; array elements are named by their declared index, so an
+  `ARRAY[1:30]` starts at `[1]` and a two-dimensional one reads `[1,1]`, `[1,2]`.
+- The **call stack** shows one frame per active call, with `<main>` at the bottom.
+- **Watch** and hover evaluate an expression against the selected frame. A hover will
+  not run a call, so looking at a value can never change one.
+- Editing a value in the panel is type-checked the same way an assignment is.
+- `INPUT` asks for the line in an input box, since a debug session has no terminal.
+
+A breakpoint on a blank line or on `ENDIF` moves down to the next real statement.
 
 ## Commands
 

@@ -11,3 +11,4 @@
 - Added: 2026-08-26 08:34 | Completed: 2026-08-26 09:22 | M7 - text files (READ/WRITE/APPEND, EOF) and random files (SEEK/GETRECORD/PUTRECORD), 22 tests
 - Added: 2026-08-26 08:34 | Completed: 2026-08-26 09:32 | M8 - CLASS, INHERITS, NEW, SUPER, PUBLIC/PRIVATE, dynamic dispatch, 24 tests
 - Added: 2026-08-26 08:34 | Completed: 2026-08-26 09:32 | M9 — VS Code extension: TextMate grammar, Run command, snippets, .vsix
+- Added: 2026-08-26 08:34 | Completed: 2026-08-26 13:35 | M10 — debug adapter: breakpoints, step, variables, call stack, INPUT prompts

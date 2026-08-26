@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import { checkDocument } from './check';
+import { registerDebugger } from './debug/register';
 import { runFile } from './run';
 
 const LANGUAGE_ID = 'pseudocode';
@@ -7,6 +8,8 @@ const LANGUAGE_ID = 'pseudocode';
 export function activate(context: vscode.ExtensionContext): void {
   const diagnostics = vscode.languages.createDiagnosticCollection(LANGUAGE_ID);
   context.subscriptions.push(diagnostics);
+
+  registerDebugger(context);
 
   context.subscriptions.push(
     vscode.commands.registerCommand('pseudoLang.run', async () => {

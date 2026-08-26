@@ -210,6 +210,29 @@ export class Parser {
     return { body };
   }
 
+  /**
+   * Parses one expression and nothing else. The debugger's watch and hover
+   * panels need this; a program is never parsed this way.
+   */
+  parseExpressionOnly(): Expr | null {
+    try {
+      this.skipNewlines();
+      const expr = this.parseExpr();
+      this.skipNewlines();
+      if (!this.check('EOF')) {
+        this.sink.report('E2012', this.current.span, {
+          message: `unexpected ${describeToken(this.current)} after the expression`,
+          label: 'not part of the expression',
+        });
+        return null;
+      }
+      return expr;
+    } catch (err) {
+      if (err instanceof StatementError) return null;
+      throw err;
+    }
+  }
+
   private parseStatementList(): Stmt[] {
     const body: Stmt[] = [];
     this.skipNewlines();
@@ -1293,6 +1316,14 @@ export function parse(
 ): { program: Program; sink: DiagnosticSink } {
   const program = new Parser(tokens, sink).parseProgram();
   return { program, sink };
+}
+
+export function parseExpression(
+  tokens: Token[],
+  sink: DiagnosticSink = new DiagnosticSink(),
+): { expr: Expr | null; sink: DiagnosticSink } {
+  const expr = new Parser(tokens, sink).parseExpressionOnly();
+  return { expr: sink.hasErrors ? null : expr, sink };
 }
 
 export { PseudoError };

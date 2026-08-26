@@ -43,6 +43,13 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   INPUT reads from the keyboard. A typed `<-` is rewritten to `←` on save, and
   `.pseudo` files default to three-space indentation to match the guide's own
   listings. `pnpm package` produces the `.vsix`.
+- M10: the step debugger. An inline debug adapter with breakpoints, step
+  over/into/out, the call stack, and a variables panel that expands arrays,
+  records, objects, sets and pointers and marks PRIVATE fields. Watch and hover
+  evaluate an expression against the selected frame, and a hover never runs a
+  call. Values may be edited in the panel, type-checked the same way an
+  assignment is. INPUT is asked for in an input box, since a debug session has
+  no terminal. A breakpoint on a blank line moves to the next statement.
 
 ### Fixed
 

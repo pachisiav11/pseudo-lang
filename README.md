@@ -36,7 +36,8 @@ That writes `packages/vscode/pseudo-lang-<version>.vsix`. Install it with:
 code --install-extension packages/vscode/pseudo-lang-0.1.0.vsix
 ```
 
-Open any `.pseudo` file and press the ▷ button in the editor title bar.
+Open any `.pseudo` file and press the ▷ button in the editor title bar to run it, or
+`F5` to debug it with breakpoints, stepping and a variables panel.
 
 ## Use it from the command line
 
@@ -64,9 +65,9 @@ and `--max-depth <n>`.
 
 ## Status
 
-Milestones M0–M9 are complete: the language runs in full, and the VS Code
-extension ships syntax highlighting, snippets, problem markers and a Run
-command. The step debugger (M10) is next.
+Milestones M0–M10 are complete: the language runs in full, and the VS Code
+extension ships syntax highlighting, snippets, problem markers, a Run command
+and a step debugger. Polish and release (M11) is next.
 
 See [BUILD_GUIDE.md](BUILD_GUIDE.md) for the full specification and the
 milestone plan, and [todo.md](todo.md) for progress.

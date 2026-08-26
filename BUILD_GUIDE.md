@@ -1510,9 +1510,13 @@ async beforeStatement(node: Stmt, stack: readonly Frame[]): Promise<void> {
 
 `OUTPUT` becomes an `OutputEvent` on the debug console. `INPUT` is the interesting one — there is no terminal to read from.
 
-**[DECISION]** `DebugHost.readLine()` sends a **custom DAP event** `pseudoInputRequest`; the extension listens via `onDidReceiveDebugSessionCustomEvent`, shows `vscode.window.showInputBox({ prompt: 'INPUT' })`, and replies with a `pseudoInputResponse` custom request carrying the line. Cancelling the box terminates the session cleanly.
+**[DECISION]** `DebugHost.readLine()` sends a **custom DAP event** `pseudoInputRequest`; the extension listens via `onDidReceiveDebugSessionCustomEvent`, shows `vscode.window.showInputBox({ prompt: 'INPUT' })`, and replies with a `pseudoInputResponse` custom request carrying the line. Cancelling the box replies with `null`, which the interpreter sees as end of input.
 
-For `noDebug: true` (the Run command), the same adapter runs but with `runInTerminal` so stdin works normally. Request `runInTerminal` in `launchRequest` when `args.noDebug` is set, spawning `node <cli> run <file>`. This means Run genuinely uses the CLI and Debug uses the in-process interpreter — two paths, but each is simple and they share all of `core`.
+The adapter never handles `noDebug`. Running without debugging is the Run command from [§18.5](#185-the-run-command), which spawns the bundled CLI in a terminal — so Run genuinely uses the CLI and Debug uses the in-process interpreter. Two paths, but each is simple and they share all of `core`.
+
+**Ordering.** `setBreakpoints` needs the statement lines, which only exist once `launchRequest` has parsed the program, and a client may send it before the launch response arrives. `launchRequest` resolves a `parseDone` promise as soon as the lines are known — including on the failure paths — and `setBreakPointsRequest` awaits it.
+
+**Step out at the end of the program.** `stepOut` stops at the next statement shallower than the current frame. When the remaining work is all expression evaluation — a recursive `RETURN N * Factorial(N - 1)` unwinding, for instance — there is no such statement, and the program runs to completion. That is correct: there is genuinely nothing left to stop on.
 
 ### 19.4 Variable rendering
 
