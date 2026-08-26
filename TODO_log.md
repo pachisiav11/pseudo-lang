@@ -7,3 +7,4 @@
 - Added: 2026-08-26 08:34 | Completed: 2026-08-26 09:01 | M3 - IF, CASE OF with ranges, FOR with STEP, REPEAT, WHILE, unclosed-block diagnostics, 28 tests
 - Added: 2026-08-26 08:34 | Completed: 2026-08-26 09:04 | M4 - 1-D and 2-D arrays, bounds checking with declared range in the message, whole-array copy, 19 tests
 - Added: 2026-08-26 08:34 | Completed: 2026-08-26 09:08 | M5 - PROCEDURE/FUNCTION, CALL, RETURN, sticky BYVAL/BYREF, recursion, the eight library functions, 30 tests
+- Added: 2026-08-26 08:34 | Completed: 2026-08-26 09:14 | M6 - record, enumerated, pointer and set types, DEFINE, dot notation, address-of and dereference, 29 tests

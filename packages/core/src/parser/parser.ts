@@ -11,8 +11,10 @@ import {
   type Param,
   type PrimitiveName,
   type Program,
+  type RecordField,
   type Stmt,
   type SubprogramDecl,
+  type TypeDeclaration,
   type TypeRef,
   isLValue,
 } from './ast';
@@ -262,6 +264,10 @@ export class Parser {
           return this.parseCall();
         case 'RETURN':
           return this.parseReturn();
+        case 'TYPE':
+          return this.parseTypeDecl();
+        case 'DEFINE':
+          return this.parseDefine();
         default:
           break;
       }
@@ -449,6 +455,119 @@ export class Parser {
     return step === undefined ? stmt : { ...stmt, step };
   }
 
+  // ------------------------------------------------------ user-defined types
+
+  private parseTypeDecl(): Stmt {
+    const start = this.advance().span; // TYPE
+    const name = this.expectIdent();
+
+    if (this.match('EQ')) {
+      // Non-composite forms, and the one-line SET form.
+      if (this.check('LPAREN')) {
+        this.advance();
+        const values: string[] = [];
+        if (!this.check('RPAREN')) {
+          values.push(this.expectIdent().text);
+          while (this.match('COMMA')) values.push(this.expectIdent().text);
+        }
+        const close = this.expect('RPAREN', ')');
+        this.endOfLine();
+        const decl: TypeDeclaration = {
+          kind: 'Enum',
+          name: name.text,
+          values,
+          span: mergeSpans(start, close.span),
+        };
+        return { kind: 'TypeDecl', decl, span: decl.span };
+      }
+
+      if (this.check('CARET')) {
+        this.advance();
+        const target = this.parseTypeRef();
+        this.endOfLine();
+        const decl: TypeDeclaration = {
+          kind: 'Pointer',
+          name: name.text,
+          target,
+          span: mergeSpans(start, target.span),
+        };
+        return { kind: 'TypeDecl', decl, span: decl.span };
+      }
+
+      if (this.checkKeyword('SET')) {
+        this.advance();
+        this.expect('KEYWORD', 'OF');
+        const base = this.parseTypeRef();
+        this.endOfLine();
+        const decl: TypeDeclaration = {
+          kind: 'Set',
+          name: name.text,
+          base,
+          span: mergeSpans(start, base.span),
+        };
+        return { kind: 'TypeDecl', decl, span: decl.span };
+      }
+
+      this.fail('E2084', this.current.span, {
+        message: `expected \`(\`, \`^\` or \`SET OF\` after \`TYPE ${name.text} =\`, found ${describeToken(this.current)}`,
+        label: 'not a type definition',
+        help: 'TYPE X = (a, b, c)      an enumerated type\nTYPE X = ^INTEGER       a pointer type\nTYPE X = SET OF CHAR    a set type',
+      });
+    }
+
+    // Record form: TYPE <name> NL { DECLARE ... } ENDTYPE
+    this.endOfLine();
+    const fields: RecordField[] = [];
+    this.openBlocks.push({ keyword: 'TYPE', expected: 'ENDTYPE', span: start });
+    this.skipNewlines();
+    while (!this.check('EOF') && !this.checkKeyword('ENDTYPE')) {
+      const declareTok = this.expect('KEYWORD', 'DECLARE');
+      const fieldName = this.expectIdent();
+      this.expect('COLON', ':');
+      const typeRef = this.parseTypeRef();
+      this.endOfLine();
+      fields.push({
+        name: fieldName.text,
+        typeRef,
+        span: mergeSpans(declareTok.span, typeRef.span),
+      });
+      this.skipNewlines();
+    }
+    this.openBlocks.pop();
+    const end = this.expect('KEYWORD', 'ENDTYPE');
+    this.endOfLine();
+
+    const decl: TypeDeclaration = {
+      kind: 'Record',
+      name: name.text,
+      fields,
+      span: mergeSpans(start, end.span),
+    };
+    return { kind: 'TypeDecl', decl, span: decl.span };
+  }
+
+  private parseDefine(): Stmt {
+    const start = this.advance().span; // DEFINE
+    const name = this.expectIdent();
+    this.expect('LPAREN', '(');
+    const values: Expr[] = [];
+    if (!this.check('RPAREN')) {
+      values.push(this.parseLiteralOnly('a set member'));
+      while (this.match('COMMA')) values.push(this.parseLiteralOnly('a set member'));
+    }
+    this.expect('RPAREN', ')');
+    this.expect('COLON', ':');
+    const setType = this.expectIdent();
+    this.endOfLine();
+    return {
+      kind: 'Define',
+      name: name.text,
+      values,
+      setType: setType.text,
+      span: mergeSpans(start, setType.span),
+    };
+  }
+
   // ------------------------------------------------------------ subprograms
 
   parseSubprogram(isFunction: boolean, access?: 'PUBLIC' | 'PRIVATE'): Stmt {
@@ -612,9 +731,9 @@ export class Parser {
         this.syntaxErrors += 1;
       }
 
-      const from = this.parseLiteralOnly('a case label');
+      const from = this.parseLiteralOnly('a case label', true);
       let to: Expr | undefined;
-      if (this.matchKeyword('TO') !== null) to = this.parseLiteralOnly('a case label');
+      if (this.matchKeyword('TO') !== null) to = this.parseLiteralOnly('a case label', true);
       this.expect('COLON', ':');
       const body = this.parseCaseBody();
       const clause: CaseClause = { from, body, span: mergeSpans(from.span, from.span) };
@@ -965,13 +1084,14 @@ export class Parser {
     return expr;
   }
 
-  private parseLiteralOnly(what: string): Expr {
+  private parseLiteralOnly(what: string, allowNamed = false): Expr {
     const negate = this.check('MINUS');
     if (negate) this.advance();
     const tok = this.current;
     const literalKinds: TokenKind[] = ['INT_LIT', 'REAL_LIT', 'STRING_LIT', 'CHAR_LIT', 'DATE_LIT'];
     const isBool = tok.kind === 'KEYWORD' && (tok.text === 'TRUE' || tok.text === 'FALSE');
-    if (!literalKinds.includes(tok.kind) && !isBool) {
+    const isNamed = allowNamed && tok.kind === 'IDENT';
+    if (!literalKinds.includes(tok.kind) && !isBool && !isNamed) {
       this.fail('E2040', tok.span, {
         message: `${what} must be a literal, found ${describeToken(tok)}`,
         label: 'expected a literal',
@@ -980,6 +1100,9 @@ export class Parser {
     }
     const literal = this.parsePrimary();
     if (!negate) return literal;
+    if (literal.kind === 'Ident') {
+      this.fail('E2040', literal.span, { label: 'cannot be negated' });
+    }
     if (literal.kind !== 'IntLit' && literal.kind !== 'RealLit') {
       this.fail('E2040', literal.span, { label: 'cannot be negated' });
     }

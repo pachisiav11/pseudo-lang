@@ -125,6 +125,16 @@ function looseEquals(left: PValue, right: PValue, span: Span): boolean {
 }
 
 export function applyBinary(op: BinOp, left: PValue, right: PValue, span: Span): PValue {
+  // The guide declares sets and defines set values, but defines no operations
+  // on them beyond what assignment and comparison need.
+  if ((left.t === 'SET' || right.t === 'SET') && op !== 'EQ' && op !== 'NEQ') {
+    throw new PseudoError('E3060', span, {
+      message: `\`${SYMBOL[op]}\` is not defined for sets in the 9618 pseudocode guide`,
+      label: 'no such set operation',
+      help: 'A set can be assigned and compared with = or <>. The guide defines\nno other set operations.',
+    });
+  }
+
   switch (op) {
     case 'ADD':
     case 'SUB':

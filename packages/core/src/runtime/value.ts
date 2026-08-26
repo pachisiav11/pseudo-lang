@@ -130,14 +130,24 @@ export function isComposite(value: PValue): boolean {
  * See BUILD_GUIDE.md section 11.2 for the rule table.
  */
 export function assignable(declared: PType, value: PValue): boolean {
-  const actual = typeOfValue(value);
-  if (declared.k === 'REAL' && actual.k === 'INTEGER') return true;
-  if (declared.k === 'CLASS' && actual.k === 'CLASS') return true; // subclassing checked by caller
-  return sameType(declared, actual);
+  if (declared.k === 'REAL' && value.t === 'INTEGER') return true;
+  if (declared.k === 'CLASS' && value.t === 'OBJECT') return true; // subclassing checked by caller
+  // A `^X` expression knows what it points at but not which named pointer type
+  // it is being stored into, so pointers match on their target type.
+  if (declared.k === 'POINTER' && value.t === 'POINTER') {
+    return sameType(declared.target, value.target);
+  }
+  if (declared.k === 'SET' && value.t === 'SET') {
+    return value.typeName === '' || value.typeName === declared.name;
+  }
+  return sameType(declared, typeOfValue(value));
 }
 
-/** Applies the INTEGER -> REAL widening that `assignable` permits. */
+/** Applies the widening and naming that `assignable` permits. */
 export function coerceForStore(declared: PType, value: PValue): PValue {
   if (declared.k === 'REAL' && value.t === 'INTEGER') return real(value.v);
+  if (declared.k === 'POINTER' && value.t === 'POINTER' && value.typeName !== declared.name) {
+    return { ...value, typeName: declared.name };
+  }
   return value;
 }

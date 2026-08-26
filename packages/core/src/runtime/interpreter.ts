@@ -2,7 +2,7 @@ import type { DiagCode } from '../diagnostics/codes';
 import { type DiagnosticInit, PseudoError, type Span, mergeSpans } from '../diagnostics/error';
 import { type Frame, type Host, type RunOptions } from '../host';
 import { isValidDate } from '../lexer/lexer';
-import { type Expr, type LValue, type Program, type Stmt, type SubprogramDecl, type TypeRef, isLValue } from '../parser/ast';
+import { type Expr, type LValue, type Program, type Stmt, type SubprogramDecl, type TypeDeclaration, type TypeRef, isLValue } from '../parser/ast';
 import { Cell } from './cell';
 import { callBuiltin, isBuiltin } from './builtins';
 import { applyBinary, applyUnary } from './operators';
@@ -42,6 +42,10 @@ export class ReturnSignal extends Error {
 export class Interpreter {
   readonly globals = new Scope(null, 'global');
   readonly subprograms = new Map<string, Subprogram>();
+  readonly typeDecls = new Map<string, TypeDeclaration>();
+  /** Every enumerated value, so a bare `Spring` resolves without a prefix. */
+  readonly enumMembers = new Map<string, { typeName: string; name: string; ordinal: number }>();
+  private readonly resolvedTypes = new Map<string, PType>();
   private readonly frames: Frame[] = [];
   /** Local scopes by frame index, so the debugger can list them. */
   readonly scopesByFrame = new Map<number, Scope>();
@@ -82,6 +86,27 @@ export class Interpreter {
    */
   private hoist(body: Stmt[]): void {
     for (const stmt of body) {
+      if (stmt.kind === 'TypeDecl') {
+        const key = stmt.decl.name.toLowerCase();
+        if (this.typeDecls.has(key)) {
+          throw this.error('E3003', stmt.decl.span, {
+            message: `type \`${stmt.decl.name}\` is already defined`,
+            label: 'defined twice',
+          });
+        }
+        this.typeDecls.set(key, stmt.decl);
+        if (stmt.decl.kind === 'Enum') {
+          stmt.decl.values.forEach((value, ordinal) => {
+            this.enumMembers.set(value.toLowerCase(), {
+              typeName: (stmt.decl as { name: string }).name,
+              name: value,
+              ordinal,
+            });
+          });
+        }
+        continue;
+      }
+
       if (stmt.kind === 'ProcDecl' || stmt.kind === 'FuncDecl') {
         const key = stmt.decl.name.toLowerCase();
         const existing = this.subprograms.get(key);
@@ -134,6 +159,10 @@ export class Interpreter {
         return this.execCallStmt(stmt, scope);
       case 'Return':
         return this.execReturn(stmt, scope);
+      case 'TypeDecl':
+        return; // registered by hoist()
+      case 'Define':
+        return this.execDefine(stmt, scope);
       default:
         throw this.error('E2002', stmt.span, {
           message: `\`${stmt.kind}\` is not supported yet`,
@@ -155,9 +184,9 @@ export class Interpreter {
     }
     const type = await this.resolveType(stmt.typeRef, scope);
     const cell = scope.define(stmt.name, type);
-    // Arrays are fixed-length structures, so DECLARE materialises the
-    // elements. Every other type stays "declared but not yet assigned".
-    if (type.k === 'ARRAY') cell.value = makeArray(type, stmt.name);
+    // Arrays, records and pointers are structures, so DECLARE materialises
+    // them. A scalar stays "declared but not yet assigned".
+    cell.value = await this.makeValueFor(type, stmt.name, scope, stmt.span);
   }
 
   private async execConstant(
@@ -279,6 +308,38 @@ export class Interpreter {
           label: 'not an input type',
         });
     }
+  }
+
+  private async execDefine(
+    stmt: Extract<Stmt, { kind: 'Define' }>,
+    scope: Scope,
+  ): Promise<void> {
+    const setType = await this.resolveType(
+      { kind: 'NamedType', name: stmt.setType, span: stmt.span },
+      scope,
+    );
+    if (setType.k !== 'SET') {
+      throw this.error('E3061', stmt.span, {
+        message: `\`${stmt.setType}\` is not a set type`,
+        label: 'not a SET',
+        help: `Declare it first:\nTYPE ${stmt.setType} = SET OF CHAR`,
+      });
+    }
+
+    const members: PValue[] = [];
+    for (const expr of stmt.values) {
+      const value = await this.evaluate(expr, scope);
+      if (!assignable(setType.base, value)) {
+        throw this.error('E3096', expr.span, {
+          message: `\`${stmt.setType}\` is a set of ${typeName(setType.base)}, but this member is ${valueTypeName(value)}`,
+          label: `this is ${valueTypeName(value)}`,
+        });
+      }
+      members.push(coerceForStore(setType.base, value));
+    }
+
+    const cell = scope.define(stmt.name, setType, true);
+    cell.value = { t: 'SET', typeName: setType.name, members };
   }
 
   // ------------------------------------------------------------ subprograms
@@ -522,6 +583,9 @@ export class Interpreter {
     const selector = await this.evaluate(stmt.selector, scope);
 
     for (const clause of stmt.clauses) {
+      this.requireConstantLabel(clause.from, scope);
+      if (clause.to !== undefined) this.requireConstantLabel(clause.to, scope);
+
       const from = await this.evaluate(clause.from, scope);
       this.checkCaseLabel(selector, from, clause.from.span);
 
@@ -545,6 +609,22 @@ export class Interpreter {
     }
 
     if (stmt.otherwise !== undefined) await this.execBlock(stmt.otherwise, scope);
+  }
+
+  /**
+   * A named case label is only meaningful when it cannot change: a CONSTANT or
+   * an enumerated value. A plain variable would make the CASE unreadable.
+   */
+  private requireConstantLabel(expr: Expr, scope: Scope): void {
+    if (expr.kind !== 'Ident') return;
+    if (this.enumMembers.has(expr.name.toLowerCase())) return;
+    const cell = scope.lookup(expr.name);
+    if (cell !== undefined && cell.isConstant) return;
+    throw this.error('E2040', expr.span, {
+      message: `\`${expr.name}\` cannot be a case label`,
+      label: cell === undefined ? 'not defined' : 'a variable',
+      help: 'A case label must be a literal, a CONSTANT, or a value of an\nenumerated type.',
+    });
   }
 
   private checkCaseLabel(selector: PValue, label: PValue, span: Span): void {
@@ -584,12 +664,87 @@ export class Interpreter {
         }
         return { k: 'ARRAY', dims, element: await this.resolveType(ref.element, scope) };
       }
-      case 'NamedType':
-        throw this.error('E3061', ref.span, {
-          message: `unknown type \`${ref.name}\``,
-          label: 'not a known type',
-        });
+      case 'NamedType': {
+        const key = ref.name.toLowerCase();
+        const memo = this.resolvedTypes.get(key);
+        if (memo !== undefined) return memo;
+
+        const decl = this.typeDecls.get(key);
+        if (decl === undefined) {
+          throw this.error('E3061', ref.span, {
+            message: `unknown type \`${ref.name}\``,
+            label: 'not a known type',
+            help: 'Define it first with TYPE, or use one of INTEGER, REAL, CHAR,\nSTRING, BOOLEAN or DATE.',
+          });
+        }
+
+        let resolved: PType;
+        switch (decl.kind) {
+          case 'Record':
+            resolved = { k: 'RECORD', name: decl.name };
+            break;
+          case 'Enum':
+            resolved = { k: 'ENUM', name: decl.name };
+            break;
+          case 'Pointer':
+            resolved = {
+              k: 'POINTER',
+              name: decl.name,
+              target: await this.resolveType(decl.target, scope),
+            };
+            break;
+          case 'Set':
+            resolved = {
+              k: 'SET',
+              name: decl.name,
+              base: await this.resolveType(decl.base, scope),
+            };
+            break;
+        }
+        this.resolvedTypes.set(key, resolved);
+        return resolved;
+      }
     }
+  }
+
+  /** The declared field list of a record type, resolved on demand. */
+  async recordFields(name: string, scope: Scope, span: Span): Promise<[string, PType][]> {
+    const decl = this.typeDecls.get(name.toLowerCase());
+    if (decl === undefined || decl.kind !== 'Record') {
+      throw this.error('E3061', span, { message: `\`${name}\` is not a record type` });
+    }
+    const fields: [string, PType][] = [];
+    for (const field of decl.fields) {
+      fields.push([field.name, await this.resolveType(field.typeRef, scope)]);
+    }
+    return fields;
+  }
+
+  private async makeValueFor(type: PType, name: string, scope: Scope, span: Span): Promise<PValue | undefined> {
+    if (type.k === 'ARRAY') {
+      const value = makeArray(type, name);
+      // An array of records needs each element materialised too, otherwise
+      // `Form[Index].YearGroup <- 6` would have no field cell to write into.
+      if (needsMaterialising(type.element)) {
+        for (const cell of (value as Extract<PValue, { t: 'ARRAY' }>).arr.cells) {
+          cell.value = await this.makeValueFor(type.element, cell.name, scope, span);
+        }
+      }
+      return value;
+    }
+    if (type.k === 'RECORD') {
+      const fields = new Map<string, Cell>();
+      for (const [fieldName, fieldType] of await this.recordFields(type.name, scope, span)) {
+        const cell = new Cell(fieldType, undefined, fieldName);
+        cell.value = await this.makeValueFor(fieldType, fieldName, scope, span);
+        fields.set(fieldName.toLowerCase(), cell);
+      }
+      return { t: 'RECORD', typeName: type.name, fields };
+    }
+    if (type.k === 'POINTER') {
+      return { t: 'POINTER', typeName: type.name, target: type.target, cell: null };
+    }
+    return undefined;
   }
 
   // ------------------------------------------------------------ expressions
@@ -612,6 +767,15 @@ export class Interpreter {
       case 'Ident': {
         const cell = scope.lookup(expr.name);
         if (cell === undefined) {
+          const member = this.enumMembers.get(expr.name.toLowerCase());
+          if (member !== undefined) {
+            return {
+              t: 'ENUM',
+              typeName: member.typeName,
+              name: member.name,
+              ordinal: member.ordinal,
+            };
+          }
           throw this.error('E3001', expr.span, {
             message: `\`${expr.name}\` is used before it is given a value`,
             label: 'never assigned',
@@ -629,10 +793,38 @@ export class Interpreter {
 
       case 'Unary': {
         if (expr.op === 'ADDR') {
-          throw this.error('E3061', expr.span, { message: 'pointers are not supported yet' });
+          if (!isLValue(expr.operand)) {
+            throw this.error('E2050', expr.span, { label: 'not a variable' });
+          }
+          const cell = await this.resolveLValue(expr.operand, scope);
+          // The pointer type name is filled in on assignment, when the
+          // declared type of the destination is known.
+          return { t: 'POINTER', typeName: '', target: cell.declared, cell };
         }
         const operand = await this.evaluate(expr.operand, scope);
         return applyUnary(expr.op, operand, expr.span);
+      }
+
+      case 'Member': {
+        const cell = await this.memberCell(expr, scope);
+        if (cell.value === undefined) {
+          throw this.error('E3001', expr.span, {
+            message: `\`${describeTarget(expr)}\` is used before it is given a value`,
+            label: 'never assigned',
+          });
+        }
+        return cell.value;
+      }
+
+      case 'Deref': {
+        const cell = await this.derefCell(expr, scope);
+        if (cell.value === undefined) {
+          throw this.error('E3001', expr.span, {
+            message: 'the value this pointer refers to has never been assigned',
+            label: 'never assigned',
+          });
+        }
+        return cell.value;
       }
 
       case 'Index': {
@@ -746,6 +938,64 @@ export class Interpreter {
     return cell;
   }
 
+  // ------------------------------------------------- records and pointers
+
+  private async memberCell(
+    expr: Extract<Expr, { kind: 'Member' }>,
+    scope: Scope,
+  ): Promise<Cell> {
+    const container = await this.evaluate(expr.target, scope);
+
+    if (container.t === 'RECORD') {
+      const cell = container.fields.get(expr.field.toLowerCase());
+      if (cell === undefined) {
+        throw this.error('E3073', expr.span, {
+          message: `\`${container.typeName}\` has no field called \`${expr.field}\``,
+          label: 'unknown field',
+          help: `Its fields are: ${[...container.fields.values()].map((c) => c.name).join(', ')}.`,
+        });
+      }
+      return cell;
+    }
+
+    if (container.t === 'OBJECT') return this.objectFieldCell(container, expr, scope);
+
+    throw this.error('E3072', expr.target.span, {
+      message: `\`${describeTarget(expr.target)}\` is ${valueTypeName(container)}, so it has no fields`,
+      label: 'not a record',
+    });
+  }
+
+  /** Overridden in M8, when classes exist. */
+  protected async objectFieldCell(
+    _container: Extract<PValue, { t: 'OBJECT' }>,
+    expr: Extract<Expr, { kind: 'Member' }>,
+    _scope: Scope,
+  ): Promise<Cell> {
+    throw this.error('E3073', expr.span, { message: 'objects are not supported yet' });
+  }
+
+  private async derefCell(
+    expr: Extract<Expr, { kind: 'Deref' }>,
+    scope: Scope,
+  ): Promise<Cell> {
+    const pointer = await this.evaluate(expr.target, scope);
+    if (pointer.t !== 'POINTER') {
+      throw this.error('E3074', expr.target.span, {
+        message: `\`${describeTarget(expr.target)}\` is ${valueTypeName(pointer)}, not a pointer`,
+        label: 'not a pointer',
+      });
+    }
+    if (pointer.cell === null) {
+      throw this.error('E3070', expr.span, {
+        message: `\`${describeTarget(expr.target)}\` does not point at anything yet`,
+        label: 'no target',
+        help: `Give it an address first, for example:\n${describeTarget(expr.target)} <- ^SomeVariable`,
+      });
+    }
+    return pointer.cell;
+  }
+
   // ---------------------------------------------------------------- lvalues
 
   /**
@@ -769,11 +1019,10 @@ export class Interpreter {
 
       case 'Index':
         return this.indexCell(target, scope);
-
-      default:
-        throw this.error('E3061', target.span, {
-          message: `\`${target.kind}\` targets are not supported yet`,
-        });
+      case 'Member':
+        return this.memberCell(target, scope);
+      case 'Deref':
+        return this.derefCell(target, scope);
     }
   }
 
@@ -787,6 +1036,11 @@ export class Interpreter {
       .map((f) => `${f.name} (line ${f.line})`);
     return err;
   }
+}
+
+/** Types whose storage DECLARE creates up front rather than leaving unset. */
+function needsMaterialising(type: PType): boolean {
+  return type.k === 'ARRAY' || type.k === 'RECORD' || type.k === 'POINTER';
 }
 
 /** Builds the dense element list for a freshly declared array. */

@@ -28,3 +28,7 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   BYVAL/BYREF with the guide's sticky-mode rule, recursion with a depth limit,
   and the eight functions the guide defines. Subprograms are hoisted, so one
   may call another defined further down the file.
+- M6: user-defined types. Records with dot notation and by-value copying,
+  enumerated types that compare by declaration order, pointer types with `^`
+  for address-of and dereference, and set types with DEFINE. Case labels may
+  now be a CONSTANT or an enumerated value as well as a literal.
