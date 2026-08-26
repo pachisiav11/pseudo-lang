@@ -3,6 +3,7 @@ import type { DiagCode } from '../diagnostics/codes';
 import { BLOCK_END_KEYWORDS, isMiscasedKeyword } from '../lexer/keywords';
 import { type Token, type TokenKind, describeToken } from '../lexer/token';
 import {
+  type ArrayDim,
   type BinOp,
   type CaseClause,
   type Expr,
@@ -560,6 +561,30 @@ export class Parser {
 
   parseTypeRef(): TypeRef {
     const tok = this.current;
+
+    if (tok.kind === 'KEYWORD' && tok.text === 'ARRAY') {
+      this.advance();
+      this.expect('LBRACKET', '[');
+      const dims: ArrayDim[] = [];
+      for (;;) {
+        const lower = this.parseExpr();
+        this.expect('COLON', ':');
+        const upper = this.parseExpr();
+        dims.push({ lower, upper });
+        if (!this.match('COMMA')) break;
+      }
+      this.expect('RBRACKET', ']');
+      if (dims.length > 2) {
+        this.fail('E2084', tok.span, {
+          message: `an array may have one or two dimensions, not ${dims.length}`,
+          label: 'too many dimensions',
+          help: 'The 9618 syllabus covers one-dimensional and two-dimensional\narrays only.',
+        });
+      }
+      this.expect('KEYWORD', 'OF');
+      const element = this.parseTypeRef();
+      return { kind: 'ArrayType', dims, element, span: mergeSpans(tok.span, element.span) };
+    }
 
     if (tok.kind === 'KEYWORD' && PRIMITIVE_NAMES.has(tok.text)) {
       this.advance();

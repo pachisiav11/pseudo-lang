@@ -1,12 +1,12 @@
 import type { DiagCode } from '../diagnostics/codes';
-import { type DiagnosticInit, PseudoError, type Span } from '../diagnostics/error';
+import { type DiagnosticInit, PseudoError, type Span, mergeSpans } from '../diagnostics/error';
 import { type Frame, type Host, type RunOptions } from '../host';
 import { isValidDate } from '../lexer/lexer';
 import type { Expr, LValue, Program, Stmt, TypeRef } from '../parser/ast';
 import { Cell } from './cell';
 import { applyBinary, applyUnary } from './operators';
 import { Scope } from './scope';
-import { type PType, typeName } from './types';
+import { type Bound, type PType, elementCount, typeName } from './types';
 import {
   type PValue,
   assignable,
@@ -91,7 +91,11 @@ export class Interpreter {
         label: 'declared twice',
       });
     }
-    scope.define(stmt.name, await this.resolveType(stmt.typeRef, scope));
+    const type = await this.resolveType(stmt.typeRef, scope);
+    const cell = scope.define(stmt.name, type);
+    // Arrays are fixed-length structures, so DECLARE materialises the
+    // elements. Every other type stays "declared but not yet assigned".
+    if (type.k === 'ARRAY') cell.value = makeArray(type, stmt.name);
   }
 
   private async execConstant(
@@ -357,8 +361,21 @@ export class Interpreter {
     switch (ref.kind) {
       case 'PrimitiveType':
         return { k: ref.name } as PType;
-      case 'ArrayType':
-        throw this.error('E3061', ref.span, { message: 'arrays are not supported yet' });
+      case 'ArrayType': {
+        const dims: Bound[] = [];
+        for (const dim of ref.dims) {
+          const lower = await this.wholeNumber(dim.lower, scope, 'an array bound');
+          const upper = await this.wholeNumber(dim.upper, scope, 'an array bound');
+          if (upper < lower) {
+            throw this.error('E3082', mergeSpans(dim.lower.span, dim.upper.span), {
+              message: `the upper bound ${upper} is below the lower bound ${lower}`,
+              label: 'empty range',
+            });
+          }
+          dims.push({ lower, upper });
+        }
+        return { k: 'ARRAY', dims, element: await this.resolveType(ref.element, scope) };
+      }
       case 'NamedType':
         throw this.error('E3061', ref.span, {
           message: `unknown type \`${ref.name}\``,
@@ -410,6 +427,17 @@ export class Interpreter {
         return applyUnary(expr.op, operand, expr.span);
       }
 
+      case 'Index': {
+        const cell = await this.indexCell(expr, scope);
+        if (cell.value === undefined) {
+          throw this.error('E3001', expr.span, {
+            message: `this element of \`${describeTarget(expr.target)}\` has never been given a value`,
+            label: 'never assigned',
+          });
+        }
+        return cell.value;
+      }
+
       case 'Binary': {
         const left = await this.evaluate(expr.left, scope);
         // AND and OR do not short-circuit in the guide, but evaluating the
@@ -424,6 +452,53 @@ export class Interpreter {
           message: `\`${expr.kind}\` is not supported yet`,
         });
     }
+  }
+
+  // ----------------------------------------------------------------- arrays
+
+  /** Shared by array reads and array writes. */
+  private async indexCell(
+    expr: Extract<Expr, { kind: 'Index' }>,
+    scope: Scope,
+  ): Promise<Cell> {
+    const container = await this.evaluate(expr.target, scope);
+    if (container.t !== 'ARRAY') {
+      throw this.error('E3084', expr.target.span, {
+        message: `\`${describeTarget(expr.target)}\` is ${valueTypeName(container)}, not an array`,
+        label: 'not an array',
+      });
+    }
+
+    const arr = container.arr;
+    if (expr.indices.length !== arr.dims.length) {
+      throw this.error('E3083', expr.span, {
+        message: `this array has ${arr.dims.length} dimension${arr.dims.length === 1 ? '' : 's'}, but ${expr.indices.length} ${expr.indices.length === 1 ? 'index was' : 'indices were'} given`,
+        label: 'wrong number of indices',
+      });
+    }
+
+    let offset = 0;
+    for (let d = 0; d < arr.dims.length; d += 1) {
+      const dim = arr.dims[d];
+      const indexExpr = expr.indices[d];
+      if (dim === undefined || indexExpr === undefined) break;
+      const index = await this.wholeNumber(indexExpr, scope, 'an array index');
+      if (index < dim.lower || index > dim.upper) {
+        throw this.error('E3082', indexExpr.span, {
+          message: `array index ${index} is outside the bounds of \`${describeTarget(expr.target)}\``,
+          label: `${index} is out of range`,
+          help: `The valid range for this dimension is ${dim.lower} to ${dim.upper}.`,
+        });
+      }
+      const size = dim.upper - dim.lower + 1;
+      offset = offset * size + (index - dim.lower);
+    }
+
+    const cell = arr.cells[offset];
+    if (cell === undefined) {
+      throw this.error('E3082', expr.span, { message: 'array index out of bounds' });
+    }
+    return cell;
   }
 
   // ---------------------------------------------------------------- lvalues
@@ -446,6 +521,10 @@ export class Interpreter {
         }
         return scope.define(target.name, typeOfValue(hint));
       }
+
+      case 'Index':
+        return this.indexCell(target, scope);
+
       default:
         throw this.error('E3061', target.span, {
           message: `\`${target.kind}\` targets are not supported yet`,
@@ -462,6 +541,32 @@ export class Interpreter {
       .reverse()
       .map((f) => `${f.name} (line ${f.line})`);
     return err;
+  }
+}
+
+/** Builds the dense element list for a freshly declared array. */
+export function makeArray(type: Extract<PType, { k: 'ARRAY' }>, name: string): PValue {
+  const count = elementCount(type.dims);
+  const cells: Cell[] = [];
+  for (let i = 0; i < count; i += 1) {
+    cells.push(new Cell(type.element, undefined, `${name}[${i}]`));
+  }
+  return { t: 'ARRAY', arr: { dims: type.dims, element: type.element, cells } };
+}
+
+/** A short readable form of an expression, for error messages. */
+function describeTarget(expr: Expr): string {
+  switch (expr.kind) {
+    case 'Ident':
+      return expr.name;
+    case 'Member':
+      return `${describeTarget(expr.target)}.${expr.field}`;
+    case 'Index':
+      return `${describeTarget(expr.target)}[...]`;
+    case 'Deref':
+      return `${describeTarget(expr.target)}^`;
+    default:
+      return 'this value';
   }
 }
 
