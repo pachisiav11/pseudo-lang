@@ -62,6 +62,16 @@ export class Interpreter {
         return this.execOutput(stmt, scope);
       case 'Input':
         return this.execInput(stmt, scope);
+      case 'If':
+        return this.execIf(stmt, scope);
+      case 'While':
+        return this.execWhile(stmt, scope);
+      case 'Repeat':
+        return this.execRepeat(stmt, scope);
+      case 'For':
+        return this.execFor(stmt, scope);
+      case 'Case':
+        return this.execCase(stmt, scope);
       default:
         throw this.error('E2002', stmt.span, {
           message: `\`${stmt.kind}\` is not supported yet`,
@@ -203,6 +213,142 @@ export class Interpreter {
           label: 'not an input type',
         });
     }
+  }
+
+  // ----------------------------------------------------------- control flow
+
+  private async condition(expr: Expr, scope: Scope, what: string): Promise<boolean> {
+    const value = await this.evaluate(expr, scope);
+    if (value.t !== 'BOOLEAN') {
+      throw this.error('E3098', expr.span, {
+        message: `the ${what} must be TRUE or FALSE, but this is ${valueTypeName(value)}`,
+        label: `this is ${valueTypeName(value)}`,
+      });
+    }
+    return value.v;
+  }
+
+  private async execIf(stmt: Extract<Stmt, { kind: 'If' }>, scope: Scope): Promise<void> {
+    if (await this.condition(stmt.cond, scope, 'condition of an IF')) {
+      await this.execBlock(stmt.then, scope);
+    } else if (stmt.otherwise !== undefined) {
+      await this.execBlock(stmt.otherwise, scope);
+    }
+  }
+
+  private async execWhile(stmt: Extract<Stmt, { kind: 'While' }>, scope: Scope): Promise<void> {
+    while (await this.condition(stmt.cond, scope, 'condition of a WHILE')) {
+      await this.execBlock(stmt.body, scope);
+    }
+  }
+
+  private async execRepeat(stmt: Extract<Stmt, { kind: 'Repeat' }>, scope: Scope): Promise<void> {
+    for (;;) {
+      await this.execBlock(stmt.body, scope);
+      if (await this.condition(stmt.until, scope, 'condition of an UNTIL')) return;
+    }
+  }
+
+  private async wholeNumber(expr: Expr, scope: Scope, what: string): Promise<number> {
+    const value = await this.evaluate(expr, scope);
+    if (value.t !== 'INTEGER') {
+      throw this.error('E3030', expr.span, {
+        message: `${what} must be a whole number, but this is ${valueTypeName(value)}`,
+        label: `this is ${valueTypeName(value)}`,
+      });
+    }
+    return value.v;
+  }
+
+  private async execFor(stmt: Extract<Stmt, { kind: 'For' }>, scope: Scope): Promise<void> {
+    // The guide fixes no evaluation order, so all three are taken once, in
+    // written order, before the loop starts.
+    const from = await this.wholeNumber(stmt.from, scope, 'the start value of a FOR loop');
+    const to = await this.wholeNumber(stmt.to, scope, 'the end value of a FOR loop');
+    const step =
+      stmt.step === undefined ? 1 : await this.wholeNumber(stmt.step, scope, 'a STEP value');
+
+    if (step === 0) {
+      throw this.error('E3031', stmt.step?.span ?? stmt.span, {
+        message: 'STEP cannot be zero, because the loop would never end',
+        label: 'zero step',
+      });
+    }
+
+    let cell = scope.lookup(stmt.varName);
+    if (cell === undefined) {
+      if (this.options.strictDeclarations) {
+        throw this.error('E3002', stmt.span, {
+          message: `\`${stmt.varName}\` is not declared`,
+          label: 'not declared',
+          help: `Declare it first:\nDECLARE ${stmt.varName} : INTEGER`,
+        });
+      }
+      cell = scope.define(stmt.varName, { k: 'INTEGER' });
+    } else if (cell.declared.k !== 'INTEGER') {
+      throw this.error('E3030', stmt.span, {
+        message: `\`${cell.name}\` is ${typeName(cell.declared)}, but a FOR loop counts with an INTEGER`,
+        label: 'not an INTEGER',
+      });
+    }
+
+    let i = from;
+    for (;;) {
+      // Storing before the test leaves the counter holding the first value
+      // that failed it, which is what a reader expects after the loop.
+      cell.value = int(i);
+      if (step > 0 ? i > to : i < to) return;
+      await this.execBlock(stmt.body, scope);
+      // Reading the counter back lets the body change it, which the guide
+      // does not forbid.
+      const current = cell.value;
+      i = (current !== undefined && current.t === 'INTEGER' ? current.v : i) + step;
+    }
+  }
+
+  private async execCase(stmt: Extract<Stmt, { kind: 'Case' }>, scope: Scope): Promise<void> {
+    const selector = await this.evaluate(stmt.selector, scope);
+
+    for (const clause of stmt.clauses) {
+      const from = await this.evaluate(clause.from, scope);
+      this.checkCaseLabel(selector, from, clause.from.span);
+
+      if (clause.to === undefined) {
+        const equal = applyBinary('EQ', selector, from, clause.from.span);
+        if (equal.t === 'BOOLEAN' && equal.v) {
+          await this.execBlock(clause.body, scope);
+          return;
+        }
+        continue;
+      }
+
+      const to = await this.evaluate(clause.to, scope);
+      this.checkCaseLabel(selector, to, clause.to.span);
+      const atLeast = applyBinary('GTE', selector, from, clause.from.span);
+      const atMost = applyBinary('LTE', selector, to, clause.to.span);
+      if (atLeast.t === 'BOOLEAN' && atLeast.v && atMost.t === 'BOOLEAN' && atMost.v) {
+        await this.execBlock(clause.body, scope);
+        return;
+      }
+    }
+
+    if (stmt.otherwise !== undefined) await this.execBlock(stmt.otherwise, scope);
+  }
+
+  private checkCaseLabel(selector: PValue, label: PValue, span: Span): void {
+    const numeric = (v: PValue): boolean => v.t === 'INTEGER' || v.t === 'REAL';
+    if (numeric(selector) && numeric(label)) return;
+    if (selector.t === label.t) return;
+    const charString =
+      (selector.t === 'STRING' && label.t === 'CHAR') ||
+      (selector.t === 'CHAR' && label.t === 'STRING');
+    throw this.error('E3040', span, {
+      message: `this case is ${valueTypeName(label)} but the CASE selector is ${valueTypeName(selector)}`,
+      label: `this is ${valueTypeName(label)}`,
+      help: charString
+        ? "CHAR and STRING are different types. A variable that is read with\nINPUT and never declared holds a STRING, so declare it as a CHAR\nfirst if you want to match single-quoted cases."
+        : undefined,
+    });
   }
 
   // ------------------------------------------------------------------ types

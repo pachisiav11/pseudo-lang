@@ -18,3 +18,6 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   the tagged-value runtime, storage cells, scopes, and an async tree-walking
   interpreter. Covers DECLARE, CONSTANT, assignment, INPUT and OUTPUT. `pseudo
   run`, `pseudo check` and `pseudo ast` work.
+- M3: control flow. IF/ELSE, CASE OF with ranges and OTHERWISE, count-controlled
+  FOR with STEP, REPEAT/UNTIL and WHILE. An unclosed block is reported against
+  the line that opened it.

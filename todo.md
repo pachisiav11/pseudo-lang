@@ -1,6 +1,5 @@
 # TODO
 
-- 2026-08-26 08:34: M3 — control flow: IF, CASE, FOR, REPEAT, WHILE
 - 2026-08-26 08:34: M4 — arrays: 1-D and 2-D, bounds checking, whole-array assignment
 - 2026-08-26 08:34: M5 — subprograms (PROCEDURE/FUNCTION/CALL/RETURN/BYVAL/BYREF) and the eight built-in functions
 - 2026-08-26 08:34: M6 — user-defined types: record, enum, pointer, set, DEFINE, dot notation, ^

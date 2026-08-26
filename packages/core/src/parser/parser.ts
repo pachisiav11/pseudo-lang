@@ -4,6 +4,7 @@ import { BLOCK_END_KEYWORDS, isMiscasedKeyword } from '../lexer/keywords';
 import { type Token, type TokenKind, describeToken } from '../lexer/token';
 import {
   type BinOp,
+  type CaseClause,
   type Expr,
   type LValue,
   type PrimitiveName,
@@ -239,6 +240,16 @@ export class Parser {
           return this.parseInput();
         case 'OUTPUT':
           return this.parseOutput();
+        case 'IF':
+          return this.parseIf();
+        case 'CASE':
+          return this.parseCase();
+        case 'FOR':
+          return this.parseFor();
+        case 'REPEAT':
+          return this.parseRepeat();
+        case 'WHILE':
+          return this.parseWhile();
         default:
           break;
       }
@@ -337,6 +348,185 @@ export class Parser {
     const value = this.parseExpr();
     this.endOfLine();
     return { kind: 'Assign', target, value, span: mergeSpans(target.span, value.span) };
+  }
+
+  // ----------------------------------------------------------- control flow
+
+  private parseIf(): Stmt {
+    const start = this.advance().span; // IF
+    const cond = this.parseExpr();
+    this.match('NEWLINE'); // the guide allows THEN on the next line
+    this.expect('KEYWORD', 'THEN');
+    this.endOfLine();
+
+    const then = this.parseBlock('IF', start, 'ELSE', 'ENDIF');
+
+    let otherwise: Stmt[] | undefined;
+    if (this.matchKeyword('ELSE') !== null) {
+      this.endOfLine();
+      otherwise = this.parseBlock('ELSE', start, 'ENDIF');
+    }
+
+    const end = this.expect('KEYWORD', 'ENDIF');
+    this.endOfLine();
+    const stmt: Stmt = { kind: 'If', cond, then, span: mergeSpans(start, end.span) };
+    return otherwise === undefined ? stmt : { ...stmt, otherwise };
+  }
+
+  private parseWhile(): Stmt {
+    const start = this.advance().span; // WHILE
+    const cond = this.parseExpr();
+    this.endOfLine();
+    const body = this.parseBlock('WHILE', start, 'ENDWHILE');
+    const end = this.expect('KEYWORD', 'ENDWHILE');
+    this.endOfLine();
+    return { kind: 'While', cond, body, span: mergeSpans(start, end.span) };
+  }
+
+  private parseRepeat(): Stmt {
+    const start = this.advance().span; // REPEAT
+    this.endOfLine();
+    const body = this.parseBlock('REPEAT', start, 'UNTIL');
+    this.expect('KEYWORD', 'UNTIL');
+    const until = this.parseExpr();
+    this.endOfLine();
+    return { kind: 'Repeat', body, until, span: mergeSpans(start, until.span) };
+  }
+
+  private parseFor(): Stmt {
+    const start = this.advance().span; // FOR
+    const varTok = this.expectIdent();
+
+    if (this.check('EQ')) {
+      this.fail('E2001', this.current.span, {
+        label: 'this is a comparison operator',
+        help: `A FOR loop assigns its start value with an arrow:\nFOR ${varTok.text} <- 1 TO 10`,
+      });
+    }
+    this.expect('ASSIGN', '<-');
+
+    const from = this.parseExpr();
+    this.expect('KEYWORD', 'TO');
+    const to = this.parseExpr();
+
+    let step: Expr | undefined;
+    if (this.matchKeyword('STEP') !== null) step = this.parseExpr();
+    this.endOfLine();
+
+    const body = this.parseBlock('FOR', start, 'NEXT');
+    this.expect('KEYWORD', 'NEXT');
+    const nextTok = this.expectIdent();
+    if (nextTok.text.toLowerCase() !== varTok.text.toLowerCase()) {
+      this.sink.report('E2030', nextTok.span, {
+        message: `\`NEXT ${nextTok.text}\` does not match \`FOR ${varTok.text}\``,
+        label: `expected \`${varTok.text}\``,
+        help: `The FOR loop on line ${start.line} counts with \`${varTok.text}\`.`,
+      });
+      this.syntaxErrors += 1;
+    }
+    this.endOfLine();
+
+    const stmt: Stmt = {
+      kind: 'For',
+      varName: varTok.text,
+      from,
+      to,
+      body,
+      span: mergeSpans(start, nextTok.span),
+    };
+    return step === undefined ? stmt : { ...stmt, step };
+  }
+
+  private looksLikeCaseLabel(): boolean {
+    const tok = this.current;
+    const isLabelStart =
+      tok.kind === 'INT_LIT' ||
+      tok.kind === 'REAL_LIT' ||
+      tok.kind === 'CHAR_LIT' ||
+      tok.kind === 'STRING_LIT' ||
+      tok.kind === 'DATE_LIT' ||
+      tok.kind === 'IDENT' ||
+      (tok.kind === 'KEYWORD' && (tok.text === 'TRUE' || tok.text === 'FALSE'));
+    if (!isLabelStart) return false;
+
+    if (this.peek(1).kind === 'COLON') return true;
+    const to = this.peek(1);
+    if (to.kind === 'KEYWORD' && to.text === 'TO' && this.peek(3).kind === 'COLON') return true;
+    return false;
+  }
+
+  private parseCase(): Stmt {
+    const start = this.advance().span; // CASE
+    this.expect('KEYWORD', 'OF');
+    const selector = this.parseExpr();
+    this.endOfLine();
+
+    this.openBlocks.push({ keyword: 'CASE OF', expected: 'ENDCASE', span: start });
+
+    const clauses: CaseClause[] = [];
+    let otherwise: Stmt[] | undefined;
+    let sawOtherwise = false;
+
+    this.skipNewlines();
+    while (!this.check('EOF') && !this.checkKeyword('ENDCASE')) {
+      if (this.checkKeyword('OTHERWISE')) {
+        const otherTok = this.advance();
+        if (sawOtherwise) {
+          this.sink.report('E2041', otherTok.span, {
+            message: 'there is already an OTHERWISE clause',
+            label: 'a second OTHERWISE',
+          });
+          this.syntaxErrors += 1;
+        }
+        sawOtherwise = true;
+        this.expect('COLON', ':');
+        otherwise = this.parseCaseBody();
+        continue;
+      }
+
+      if (sawOtherwise) {
+        this.sink.report('E2041', this.current.span, {
+          message: 'OTHERWISE must be the last case',
+          label: 'comes after OTHERWISE',
+          help: 'Move the OTHERWISE clause to the end, just before ENDCASE.',
+        });
+        this.syntaxErrors += 1;
+      }
+
+      const from = this.parseLiteralOnly('a case label');
+      let to: Expr | undefined;
+      if (this.matchKeyword('TO') !== null) to = this.parseLiteralOnly('a case label');
+      this.expect('COLON', ':');
+      const body = this.parseCaseBody();
+      const clause: CaseClause = { from, body, span: mergeSpans(from.span, from.span) };
+      clauses.push(to === undefined ? clause : { ...clause, to });
+    }
+
+    this.openBlocks.pop();
+    const end = this.expect('KEYWORD', 'ENDCASE');
+    this.endOfLine();
+
+    const stmt: Stmt = { kind: 'Case', selector, clauses, span: mergeSpans(start, end.span) };
+    return otherwise === undefined ? stmt : { ...stmt, otherwise };
+  }
+
+  /** Statements belonging to one CASE clause, up to the next label. */
+  private parseCaseBody(): Stmt[] {
+    const body: Stmt[] = [];
+    for (;;) {
+      this.skipNewlines();
+      if (this.check('EOF') || this.checkKeyword('ENDCASE', 'OTHERWISE')) break;
+      if (this.looksLikeCaseLabel()) break;
+      const before = this.pos;
+      try {
+        body.push(this.parseStatement());
+      } catch (err) {
+        if (!(err instanceof StatementError)) throw err;
+        this.synchronise();
+      }
+      if (this.pos === before) this.advance();
+    }
+    return body;
   }
 
   private tokenLineText(tok: Token): string {
