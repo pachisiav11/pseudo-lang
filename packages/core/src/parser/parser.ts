@@ -8,9 +8,11 @@ import {
   type CaseClause,
   type Expr,
   type LValue,
+  type Param,
   type PrimitiveName,
   type Program,
   type Stmt,
+  type SubprogramDecl,
   type TypeRef,
   isLValue,
 } from './ast';
@@ -53,6 +55,7 @@ export class Parser {
   private pos = 0;
   private readonly openBlocks: OpenBlock[] = [];
   private syntaxErrors = 0;
+  private inSubprogram = false;
 
   constructor(
     private readonly tokens: Token[],
@@ -251,6 +254,14 @@ export class Parser {
           return this.parseRepeat();
         case 'WHILE':
           return this.parseWhile();
+        case 'PROCEDURE':
+          return this.parseSubprogram(false);
+        case 'FUNCTION':
+          return this.parseSubprogram(true);
+        case 'CALL':
+          return this.parseCall();
+        case 'RETURN':
+          return this.parseReturn();
         default:
           break;
       }
@@ -436,6 +447,113 @@ export class Parser {
       span: mergeSpans(start, nextTok.span),
     };
     return step === undefined ? stmt : { ...stmt, step };
+  }
+
+  // ------------------------------------------------------------ subprograms
+
+  parseSubprogram(isFunction: boolean, access?: 'PUBLIC' | 'PRIVATE'): Stmt {
+    const keyword = isFunction ? 'FUNCTION' : 'PROCEDURE';
+    const closer = isFunction ? 'ENDFUNCTION' : 'ENDPROCEDURE';
+    const start = this.advance().span;
+
+    if (this.inSubprogram) {
+      this.fail('E2020', start, {
+        message: `a ${keyword} cannot be defined inside another subprogram`,
+        label: 'nested definition',
+        help: 'Close the enclosing subprogram first. Pseudocode subprograms are\nall defined at the top level.',
+      });
+    }
+
+    const name = this.expectIdent();
+    const params = this.parseParamList(isFunction);
+
+    let returns: TypeRef | undefined;
+    if (isFunction) {
+      this.expect('KEYWORD', 'RETURNS');
+      returns = this.parseTypeRef();
+    }
+    this.endOfLine();
+
+    this.inSubprogram = true;
+    let body: Stmt[];
+    try {
+      body = this.parseBlock(keyword, start, closer);
+    } finally {
+      this.inSubprogram = false;
+    }
+    const end = this.expect('KEYWORD', closer);
+    this.endOfLine();
+
+    const decl: SubprogramDecl = {
+      name: name.text,
+      params,
+      body,
+      span: mergeSpans(start, end.span),
+    };
+    if (returns !== undefined) decl.returns = returns;
+    if (access !== undefined) decl.access = access;
+
+    return isFunction
+      ? { kind: 'FuncDecl', decl, span: decl.span }
+      : { kind: 'ProcDecl', decl, span: decl.span };
+  }
+
+  private parseParamList(isFunction: boolean): Param[] {
+    this.expect('LPAREN', '(');
+    const params: Param[] = [];
+    // The guide: "If there are several parameters passed by the same method,
+    // the BYVAL or BYREF keyword need not be repeated." So the mode is sticky.
+    let byRef = false;
+
+    if (!this.check('RPAREN')) {
+      for (;;) {
+        const mode = this.matchKeyword('BYVAL', 'BYREF');
+        if (mode !== null) byRef = mode === 'BYREF';
+
+        const name = this.expectIdent();
+        if (byRef && isFunction) {
+          this.sink.report('E2081', name.span, {
+            message: `\`${name.text}\` cannot be passed BYREF because this is a FUNCTION`,
+            label: 'BYREF parameter',
+            help: 'The guide states that parameters should not be passed by\nreference to a function.',
+          });
+          this.syntaxErrors += 1;
+        }
+        this.expect('COLON', ':');
+        const typeRef = this.parseTypeRef();
+        params.push({ name: name.text, typeRef, byRef, span: mergeSpans(name.span, typeRef.span) });
+
+        if (!this.match('COMMA')) break;
+      }
+    }
+
+    this.expect('RPAREN', ')');
+    return params;
+  }
+
+  private parseCall(): Stmt {
+    const start = this.advance().span; // CALL
+    const name = this.expectIdent();
+    // The guide's own CASE example writes `CALL Beep` with no brackets.
+    const args = this.check('LPAREN') ? this.parseArgList() : { args: [], span: name.span };
+    this.endOfLine();
+    return {
+      kind: 'CallStmt',
+      callee: name.text,
+      args: args.args,
+      span: mergeSpans(start, args.span),
+    };
+  }
+
+  private parseReturn(): Stmt {
+    const start = this.advance().span; // RETURN
+    if (this.check('NEWLINE') || this.check('EOF')) {
+      this.endOfLine();
+      return { kind: 'Return', span: start };
+    }
+    const value = this.parseExpr();
+    this.endOfLine();
+    return { kind: 'Return', value, span: mergeSpans(start, value.span) };
   }
 
   private looksLikeCaseLabel(): boolean {

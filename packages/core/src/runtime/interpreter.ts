@@ -2,11 +2,12 @@ import type { DiagCode } from '../diagnostics/codes';
 import { type DiagnosticInit, PseudoError, type Span, mergeSpans } from '../diagnostics/error';
 import { type Frame, type Host, type RunOptions } from '../host';
 import { isValidDate } from '../lexer/lexer';
-import type { Expr, LValue, Program, Stmt, TypeRef } from '../parser/ast';
+import { type Expr, type LValue, type Program, type Stmt, type SubprogramDecl, type TypeRef, isLValue } from '../parser/ast';
 import { Cell } from './cell';
+import { callBuiltin, isBuiltin } from './builtins';
 import { applyBinary, applyUnary } from './operators';
 import { Scope } from './scope';
-import { type Bound, type PType, elementCount, typeName } from './types';
+import { type Bound, type PType, elementCount, sameType, typeName } from './types';
 import {
   type PValue,
   assignable,
@@ -22,9 +23,29 @@ import {
   valueTypeName,
 } from './value';
 
+export interface Subprogram {
+  decl: SubprogramDecl;
+  isFunction: boolean;
+}
+
+/** Carries a RETURN value out of a function body. */
+export class ReturnSignal extends Error {
+  constructor(
+    readonly value: PValue | undefined,
+    readonly span: Span,
+  ) {
+    super('RETURN');
+    this.name = 'ReturnSignal';
+  }
+}
+
 export class Interpreter {
   readonly globals = new Scope(null, 'global');
+  readonly subprograms = new Map<string, Subprogram>();
   private readonly frames: Frame[] = [];
+  /** Local scopes by frame index, so the debugger can list them. */
+  readonly scopesByFrame = new Map<number, Scope>();
+  private nextScopeId = 1;
 
   constructor(
     readonly host: Host,
@@ -35,10 +56,44 @@ export class Interpreter {
     return this.frames;
   }
 
+  random(): number {
+    return this.host.random();
+  }
+
+  /** Overridden with real behaviour in M7, when the file table exists. */
+  fileAtEnd(fileName: string, span: Span): boolean {
+    throw this.error('E3116', span, {
+      message: `\`${fileName}\` is not open`,
+      label: 'no open file with this name',
+    });
+  }
+
   // ------------------------------------------------------------------ entry
 
   async run(program: Program): Promise<void> {
+    this.hoist(program.body);
     await this.execBlock(program.body, this.globals);
+  }
+
+  /**
+   * Registers every subprogram before anything runs, so a procedure may call
+   * one that is defined further down. The guide's DefaultSquare/Square example
+   * depends on this.
+   */
+  private hoist(body: Stmt[]): void {
+    for (const stmt of body) {
+      if (stmt.kind === 'ProcDecl' || stmt.kind === 'FuncDecl') {
+        const key = stmt.decl.name.toLowerCase();
+        const existing = this.subprograms.get(key);
+        if (existing !== undefined) {
+          throw this.error('E3003', stmt.decl.span, {
+            message: `\`${stmt.decl.name}\` is already defined on line ${existing.decl.span.line}`,
+            label: 'defined twice',
+          });
+        }
+        this.subprograms.set(key, { decl: stmt.decl, isFunction: stmt.kind === 'FuncDecl' });
+      }
+    }
   }
 
   async execBlock(body: Stmt[], scope: Scope): Promise<void> {
@@ -72,6 +127,13 @@ export class Interpreter {
         return this.execFor(stmt, scope);
       case 'Case':
         return this.execCase(stmt, scope);
+      case 'ProcDecl':
+      case 'FuncDecl':
+        return; // registered by hoist(), nothing to do at run time
+      case 'CallStmt':
+        return this.execCallStmt(stmt, scope);
+      case 'Return':
+        return this.execReturn(stmt, scope);
       default:
         throw this.error('E2002', stmt.span, {
           message: `\`${stmt.kind}\` is not supported yet`,
@@ -216,6 +278,152 @@ export class Interpreter {
           message: `INPUT cannot read a value of type ${typeName(declared)}`,
           label: 'not an input type',
         });
+    }
+  }
+
+  // ------------------------------------------------------------ subprograms
+
+  private async execCallStmt(
+    stmt: Extract<Stmt, { kind: 'CallStmt' }>,
+    scope: Scope,
+  ): Promise<void> {
+    const target = this.subprograms.get(stmt.callee.toLowerCase());
+    if (target === undefined) {
+      throw this.error('E3092', stmt.span, {
+        message: `there is no procedure called \`${stmt.callee}\``,
+        label: 'not defined',
+        help: isBuiltin(stmt.callee)
+          ? `${stmt.callee.toUpperCase()} is a function, so use it inside an expression rather than with CALL.`
+          : undefined,
+      });
+    }
+    if (target.isFunction) {
+      throw this.error('E2082', stmt.span, {
+        message: `\`${target.decl.name}\` is a FUNCTION, so it cannot be called with CALL`,
+        label: 'a function, not a procedure',
+        help: 'A function returns a value, so it is used inside an expression:\nOUTPUT ' + target.decl.name + '(...)',
+      });
+    }
+    await this.invoke(target, stmt.args, scope, stmt.span);
+  }
+
+  private async execReturn(
+    stmt: Extract<Stmt, { kind: 'Return' }>,
+    scope: Scope,
+  ): Promise<void> {
+    const value = stmt.value === undefined ? undefined : await this.evaluate(stmt.value, scope);
+    throw new ReturnSignal(value, stmt.span);
+  }
+
+  /** Runs a procedure or function and returns its value, if it is a function. */
+  async invoke(
+    target: Subprogram,
+    args: Expr[],
+    callerScope: Scope,
+    span: Span,
+    receiver?: Scope,
+  ): Promise<PValue | undefined> {
+    const { decl, isFunction } = target;
+
+    if (args.length !== decl.params.length) {
+      throw this.error('E3093', span, {
+        message: `\`${decl.name}\` takes ${decl.params.length} argument${decl.params.length === 1 ? '' : 's'}, but ${args.length} ${args.length === 1 ? 'was' : 'were'} given`,
+        label: 'wrong number of arguments',
+        help: `It is defined on line ${decl.span.line}.`,
+      });
+    }
+
+    if (this.frames.length >= this.options.maxCallDepth) {
+      throw this.error('E3020', span, {
+        message: `\`${decl.name}\` has called itself more than ${this.options.maxCallDepth} times`,
+        label: 'too deep',
+        help: 'A recursive subprogram needs a case that stops the recursion.',
+      });
+    }
+
+    const local = new Scope(receiver ?? this.globals, 'local');
+
+    for (let i = 0; i < decl.params.length; i += 1) {
+      const param = decl.params[i];
+      const argExpr = args[i];
+      if (param === undefined || argExpr === undefined) continue;
+      const paramType = await this.resolveType(param.typeRef, callerScope);
+
+      if (param.byRef) {
+        if (!isLValue(argExpr)) {
+          throw this.error('E3094', argExpr.span, {
+            message: `\`${param.name}\` is a BYREF parameter, so it needs a variable rather than a value`,
+            label: 'not a variable',
+            help: 'Assign the value to a variable first, then pass that variable.',
+          });
+        }
+        const cell = await this.resolveLValue(argExpr, callerScope);
+        if (!sameType(cell.declared, paramType)) {
+          throw this.error('E3096', argExpr.span, {
+            message: `\`${param.name}\` is ${typeName(paramType)}, but \`${cell.name}\` is ${typeName(cell.declared)}`,
+            label: `this is ${typeName(cell.declared)}`,
+            help: 'A BYREF parameter must match the argument exactly, because they\nshare one storage location.',
+          });
+        }
+        local.bind(param.name, cell);
+        continue;
+      }
+
+      const value = await this.evaluate(argExpr, callerScope);
+      if (!assignable(paramType, value)) {
+        throw this.error('E3096', argExpr.span, {
+          message: `\`${param.name}\` is ${typeName(paramType)}, but this argument is ${valueTypeName(value)}`,
+          label: `this is ${valueTypeName(value)}`,
+        });
+      }
+      const cell = local.define(param.name, paramType);
+      cell.value = deepCopy(coerceForStore(paramType, value));
+    }
+
+    this.frames.push({ name: decl.name, line: span.line, scopeId: this.nextScopeId++ });
+    this.scopesByFrame.set(this.frames.length - 1, local);
+
+    try {
+      await this.execBlock(decl.body, local);
+      if (isFunction) {
+        throw this.error('E3095', decl.span, {
+          message: `\`${decl.name}\` finished without reaching a RETURN`,
+          label: 'no RETURN was executed',
+          help: 'Every path through a function must reach a RETURN statement.',
+        });
+      }
+      return undefined;
+    } catch (err) {
+      if (err instanceof ReturnSignal) {
+        if (!isFunction) {
+          throw this.error('E2080', err.span, {
+            message: `\`${decl.name}\` is a PROCEDURE, so it cannot RETURN a value`,
+            label: 'RETURN inside a procedure',
+            help: 'Only a FUNCTION returns a value. Use a BYREF parameter to send a\nresult back from a procedure.',
+          });
+        }
+        if (err.value === undefined) {
+          throw this.error('E3095', err.span, {
+            message: `\`${decl.name}\` must RETURN a value`,
+            label: 'no value given',
+          });
+        }
+        const declared = await this.resolveType(
+          decl.returns ?? { kind: 'PrimitiveType', name: 'INTEGER', span: decl.span },
+          callerScope,
+        );
+        if (!assignable(declared, err.value)) {
+          throw this.error('E3096', err.span, {
+            message: `\`${decl.name}\` returns ${typeName(declared)}, but this value is ${valueTypeName(err.value)}`,
+            label: `this is ${valueTypeName(err.value)}`,
+          });
+        }
+        return coerceForStore(declared, err.value);
+      }
+      throw err;
+    } finally {
+      this.scopesByFrame.delete(this.frames.length - 1);
+      this.frames.pop();
     }
   }
 
@@ -436,6 +644,43 @@ export class Interpreter {
           });
         }
         return cell.value;
+      }
+
+      case 'Call': {
+        if (isBuiltin(expr.callee) && !this.subprograms.has(expr.callee.toLowerCase())) {
+          const args: PValue[] = [];
+          for (const arg of expr.args) args.push(await this.evaluate(arg, scope));
+          return callBuiltin(
+            expr.callee,
+            args,
+            expr.args.map((a) => a.span),
+            this,
+            expr.span,
+          );
+        }
+
+        const target = this.subprograms.get(expr.callee.toLowerCase());
+        if (target === undefined) {
+          throw this.error('E3090', expr.span, {
+            message: `\`${expr.callee}\` is not a known function`,
+            label: 'not defined',
+            help: 'The 9618 guide defines RIGHT, LENGTH, MID, LCASE, UCASE, INT,\nRAND and EOF. An exam question defines any others it uses.',
+          });
+        }
+        if (!target.isFunction) {
+          throw this.error('E3105', expr.span, {
+            message: `\`${target.decl.name}\` is a PROCEDURE, so it has no value to use here`,
+            label: 'a procedure, not a function',
+            help: `Call it as a statement instead:\nCALL ${target.decl.name}(...)`,
+          });
+        }
+        const value = await this.invoke(target, expr.args, scope, expr.span);
+        if (value === undefined) {
+          throw this.error('E3095', expr.span, {
+            message: `\`${target.decl.name}\` did not return a value`,
+          });
+        }
+        return value;
       }
 
       case 'Binary': {

@@ -24,3 +24,7 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - M4: one- and two-dimensional arrays. Bounds are checked on every read and
   write, and the message names the declared range. Whole-array assignment
   deep-copies and requires matching bounds and element type.
+- M5: subprograms and the standard library. PROCEDURE, FUNCTION, CALL, RETURN,
+  BYVAL/BYREF with the guide's sticky-mode rule, recursion with a depth limit,
+  and the eight functions the guide defines. Subprograms are hoisted, so one
+  may call another defined further down the file.

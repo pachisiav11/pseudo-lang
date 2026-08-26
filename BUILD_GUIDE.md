@@ -426,7 +426,7 @@ OUTPUT "Penalty is ", Hours * Rate
 
 **M4** — the nested `FOR` grand-total example from §7.1 runs against a seeded 2-D array.
 
-**M5** — `FUNCTION Max` from §8.2 and `PROCEDURE SWAP(BYREF X : INTEGER, Y : INTEGER)` from §8.3 both behave as documented. Critically: after `CALL SWAP(A, B)`, `A` has changed and `B` has not.
+**M5** — `FUNCTION Max` from §8.2 and `PROCEDURE SWAP(BYREF X : INTEGER, Y : INTEGER)` from §8.3 both behave as documented. Critically: after `CALL SWAP(A, B)`, **both** have changed. Guide §8.3 states that "if there are several parameters passed by the same method, the `BYVAL` or `BYREF` keyword need not be repeated", so `Y` inherits `BYREF` from `X` — which is the only reading under which `SWAP` actually swaps. **[DECISION]** The parameter-passing mode is sticky: it starts as `BYVAL` and changes only when a `BYVAL`/`BYREF` keyword appears.
 
 **M6** — the `StudentRecord` example from §4.2 runs, including `Pupil2 ← Pupil1` deep copy and `Form[Index].YearGroup ← Form[Index].YearGroup + 1`.
 
