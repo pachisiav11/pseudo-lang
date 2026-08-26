@@ -7,6 +7,8 @@ import {
   type BinOp,
   type CaseClause,
   type Expr,
+  type FileMode,
+  type FileOp,
   type LValue,
   type Param,
   type PrimitiveName,
@@ -268,6 +270,14 @@ export class Parser {
           return this.parseTypeDecl();
         case 'DEFINE':
           return this.parseDefine();
+        case 'OPENFILE':
+        case 'READFILE':
+        case 'WRITEFILE':
+        case 'CLOSEFILE':
+        case 'SEEK':
+        case 'GETRECORD':
+        case 'PUTRECORD':
+          return this.parseFileStmt();
         default:
           break;
       }
@@ -453,6 +463,57 @@ export class Parser {
       span: mergeSpans(start, nextTok.span),
     };
     return step === undefined ? stmt : { ...stmt, step };
+  }
+
+  // ---------------------------------------------------------- file handling
+
+  private parseFileStmt(): Stmt {
+    const opTok = this.advance();
+    const op = opTok.text as FileOp;
+    const file = this.parseExpr();
+
+    switch (op) {
+      case 'OPENFILE': {
+        this.expect('KEYWORD', 'FOR');
+        const modeTok = this.current;
+        const mode = this.matchKeyword('READ', 'WRITE', 'APPEND', 'RANDOM');
+        if (mode === null) {
+          this.fail('E2012', modeTok.span, {
+            message: `expected a file mode, found ${describeToken(modeTok)}`,
+            label: 'expected READ, WRITE, APPEND or RANDOM',
+          });
+        }
+        this.endOfLine();
+        return {
+          kind: 'FileStmt',
+          op,
+          file,
+          mode: mode as FileMode,
+          span: mergeSpans(opTok.span, modeTok.span),
+        };
+      }
+
+      case 'CLOSEFILE':
+        this.endOfLine();
+        return { kind: 'FileStmt', op, file, span: mergeSpans(opTok.span, file.span) };
+
+      case 'READFILE':
+      case 'GETRECORD': {
+        this.expect('COMMA', ',');
+        const target = this.parseLValue();
+        this.endOfLine();
+        return { kind: 'FileStmt', op, file, target, span: mergeSpans(opTok.span, target.span) };
+      }
+
+      case 'WRITEFILE':
+      case 'PUTRECORD':
+      case 'SEEK': {
+        this.expect('COMMA', ',');
+        const value = this.parseExpr();
+        this.endOfLine();
+        return { kind: 'FileStmt', op, file, value, span: mergeSpans(opTok.span, value.span) };
+      }
+    }
   }
 
   // ------------------------------------------------------ user-defined types

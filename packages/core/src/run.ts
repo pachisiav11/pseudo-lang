@@ -42,13 +42,18 @@ export async function runSource(
   }
 
   const interpreter = new Interpreter(host, { ...DEFAULT_RUN_OPTIONS, ...options });
+  const warnings = [...parsed.warnings];
   try {
     await interpreter.run(parsed.program);
   } catch (err) {
     if (err instanceof PseudoError) {
-      return { ok: false, errors: [err], warnings: parsed.warnings };
+      // Still flush open files, so a program that fails late does not also
+      // lose the output it had already written.
+      await interpreter.closeAll();
+      return { ok: false, errors: [err], warnings };
     }
     throw err;
   }
-  return { ok: true, errors: [], warnings: parsed.warnings };
+  warnings.push(...(await interpreter.closeAll()));
+  return { ok: true, errors: [], warnings };
 }

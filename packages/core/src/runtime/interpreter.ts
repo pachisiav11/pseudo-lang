@@ -2,9 +2,20 @@ import type { DiagCode } from '../diagnostics/codes';
 import { type DiagnosticInit, PseudoError, type Span, mergeSpans } from '../diagnostics/error';
 import { type Frame, type Host, type RunOptions } from '../host';
 import { isValidDate } from '../lexer/lexer';
-import { type Expr, type LValue, type Program, type Stmt, type SubprogramDecl, type TypeDeclaration, type TypeRef, isLValue } from '../parser/ast';
+import { type Expr, type FileMode, type LValue, type Program, type Stmt, type SubprogramDecl, type TypeDeclaration, type TypeRef, isLValue } from '../parser/ast';
 import { Cell } from './cell';
 import { callBuiltin, isBuiltin } from './builtins';
+import {
+  type OpenFile,
+  type StoredRecord,
+  decodeScalar,
+  decodeSlot,
+  encodeRecord,
+  encodeSlot,
+  growTo,
+  isEmptySlot,
+  slotBytes,
+} from './files';
 import { applyBinary, applyUnary } from './operators';
 import { Scope } from './scope';
 import { type Bound, type PType, elementCount, sameType, typeName } from './types';
@@ -46,6 +57,7 @@ export class Interpreter {
   /** Every enumerated value, so a bare `Spring` resolves without a prefix. */
   readonly enumMembers = new Map<string, { typeName: string; name: string; ordinal: number }>();
   private readonly resolvedTypes = new Map<string, PType>();
+  readonly files = new Map<string, OpenFile>();
   private readonly frames: Frame[] = [];
   /** Local scopes by frame index, so the debugger can list them. */
   readonly scopesByFrame = new Map<number, Scope>();
@@ -62,14 +74,6 @@ export class Interpreter {
 
   random(): number {
     return this.host.random();
-  }
-
-  /** Overridden with real behaviour in M7, when the file table exists. */
-  fileAtEnd(fileName: string, span: Span): boolean {
-    throw this.error('E3116', span, {
-      message: `\`${fileName}\` is not open`,
-      label: 'no open file with this name',
-    });
   }
 
   // ------------------------------------------------------------------ entry
@@ -163,6 +167,8 @@ export class Interpreter {
         return; // registered by hoist()
       case 'Define':
         return this.execDefine(stmt, scope);
+      case 'FileStmt':
+        return this.execFileStmt(stmt, scope);
       default:
         throw this.error('E2002', stmt.span, {
           message: `\`${stmt.kind}\` is not supported yet`,
@@ -340,6 +346,312 @@ export class Interpreter {
 
     const cell = scope.define(stmt.name, setType, true);
     cell.value = { t: 'SET', typeName: setType.name, members };
+  }
+
+  // ---------------------------------------------------------- file handling
+
+  private async fileNameOf(expr: Expr, scope: Scope): Promise<string> {
+    const value = await this.evaluate(expr, scope);
+    if (value.t !== 'STRING') {
+      throw this.error('E3111', expr.span, {
+        message: `a file is identified by a STRING, but this is ${valueTypeName(value)}`,
+        label: `this is ${valueTypeName(value)}`,
+      });
+    }
+    return value.v;
+  }
+
+  private requireOpen(name: string, span: Span, mode?: FileMode): OpenFile {
+    const file = this.files.get(name);
+    if (file === undefined) {
+      throw this.error('E3116', span, {
+        message: `\`${name}\` is not open`,
+        label: 'not open',
+        help: `Open it first:\nOPENFILE "${name}" FOR ${mode ?? 'READ'}`,
+      });
+    }
+    if (mode !== undefined && file.mode !== mode) {
+      throw this.error(mode === 'READ' ? 'E3110' : 'E3116', span, {
+        message: `\`${name}\` is open for ${file.mode}, not for ${mode}`,
+        label: `open for ${file.mode}`,
+        help: 'A file should be opened in only one mode at a time.',
+      });
+    }
+    return file;
+  }
+
+  private async execFileStmt(
+    stmt: Extract<Stmt, { kind: 'FileStmt' }>,
+    scope: Scope,
+  ): Promise<void> {
+    const name = await this.fileNameOf(stmt.file, scope);
+
+    switch (stmt.op) {
+      case 'OPENFILE':
+        return this.openFile(name, stmt.mode ?? 'READ', stmt.span);
+      case 'CLOSEFILE': {
+        if (!this.files.has(name)) {
+          throw this.error('E3116', stmt.span, {
+            message: `\`${name}\` is not open, so it cannot be closed`,
+            label: 'not open',
+          });
+        }
+        return this.closeFile(name);
+      }
+      case 'READFILE':
+        return this.readFile(name, stmt, scope);
+      case 'WRITEFILE':
+        return this.writeFile(name, stmt, scope);
+      case 'SEEK':
+        return this.seek(name, stmt, scope);
+      case 'GETRECORD':
+        return this.getRecord(name, stmt, scope);
+      case 'PUTRECORD':
+        return this.putRecord(name, stmt, scope);
+    }
+  }
+
+  private async openFile(name: string, mode: FileMode, span: Span): Promise<void> {
+    const existing = this.files.get(name);
+    if (existing !== undefined) {
+      throw this.error('E3113', span, {
+        message: `\`${name}\` is already open for ${existing.mode}`,
+        label: 'already open',
+        help: 'A file should be opened in only one mode at a time. Close it\nfirst with CLOSEFILE.',
+      });
+    }
+
+    const path = this.host.resolvePath(name);
+    const file: OpenFile = { name, path, mode };
+
+    switch (mode) {
+      case 'READ': {
+        if (!(await this.host.fs.exists(path))) {
+          throw this.error('E3112', span, {
+            message: `there is no file called \`${name}\``,
+            label: 'not found',
+            help: 'Relative names are resolved against the folder holding the\npseudocode file.',
+          });
+        }
+        file.lines = await this.host.fs.readFileLines(path);
+        file.cursor = 0;
+        break;
+      }
+      case 'WRITE':
+        // The guide: "A new file will be created and any existing data in the
+        // file will be lost." Truncating at open makes that true even if the
+        // program never writes anything.
+        await this.host.fs.writeFile(path, '', false);
+        file.pending = [];
+        break;
+      case 'APPEND':
+        file.pending = [];
+        break;
+      case 'RANDOM':
+        file.buffer = (await this.host.fs.exists(path))
+          ? await this.host.fs.readBinary(path)
+          : new Uint8Array(0);
+        break;
+    }
+
+    this.files.set(name, file);
+  }
+
+  async closeFile(name: string): Promise<void> {
+    const file = this.files.get(name);
+    if (file === undefined) return;
+    this.files.delete(name);
+
+    if (file.pending !== undefined) {
+      await this.host.fs.writeFile(file.path, file.pending.join(''), true);
+    }
+    if (file.buffer !== undefined) {
+      await this.host.fs.writeBinary(file.path, file.buffer);
+    }
+  }
+
+  /** Flushes anything the program forgot to close, and warns about it. */
+  async closeAll(): Promise<PseudoError[]> {
+    const warnings: PseudoError[] = [];
+    for (const name of [...this.files.keys()]) {
+      warnings.push(
+        new PseudoError('W1001', { line: 1, col: 1, endLine: 1, endCol: 2 }, {
+          message: `\`${name}\` was still open when the program ended`,
+          help: 'It has been closed and its data saved, but adding CLOSEFILE\nmakes the program correct.',
+        }),
+      );
+      await this.closeFile(name);
+    }
+    return warnings;
+  }
+
+  fileAtEnd(name: string, span: Span): boolean {
+    const file = this.requireOpen(name, span, 'READ');
+    return (file.cursor ?? 0) >= (file.lines?.length ?? 0);
+  }
+
+  private async readFile(
+    name: string,
+    stmt: Extract<Stmt, { kind: 'FileStmt' }>,
+    scope: Scope,
+  ): Promise<void> {
+    const file = this.requireOpen(name, stmt.span, 'READ');
+    const target = stmt.target;
+    if (target === undefined) return;
+
+    const cell = await this.resolveLValue(target, scope, str(''));
+    if (cell.declared.k !== 'STRING') {
+      throw this.error('E3114', target.span, {
+        message: `\`${cell.name}\` is ${typeName(cell.declared)}, but READFILE reads a line of text`,
+        label: 'not a STRING',
+      });
+    }
+
+    const cursor = file.cursor ?? 0;
+    const line = file.lines?.[cursor];
+    if (line === undefined) {
+      throw this.error('E3115', stmt.span, {
+        message: `there are no more lines to read from \`${name}\``,
+        label: 'end of file',
+        help: `Test for the end of the file first:\nWHILE NOT EOF("${name}")`,
+      });
+    }
+    file.cursor = cursor + 1;
+    this.store(cell, str(line), stmt.span);
+  }
+
+  private async writeFile(
+    name: string,
+    stmt: Extract<Stmt, { kind: 'FileStmt' }>,
+    scope: Scope,
+  ): Promise<void> {
+    const file = this.files.get(name);
+    if (file === undefined || file.pending === undefined) {
+      throw this.error('E3116', stmt.span, {
+        message:
+          file === undefined
+            ? `\`${name}\` is not open`
+            : `\`${name}\` is open for ${file.mode}, not for writing`,
+        label: 'cannot write',
+        help: `Open it for writing first:\nOPENFILE "${name}" FOR WRITE`,
+      });
+    }
+    if (stmt.value === undefined) return;
+    const value = await this.evaluate(stmt.value, scope);
+    if (isComposite(value) && value.t !== 'SET') {
+      throw this.error('E3050', stmt.value.span, {
+        message: `WRITEFILE cannot write a ${valueTypeName(value)}`,
+        label: 'not a single value',
+      });
+    }
+    file.pending.push(`${formatValue(value)}\n`);
+  }
+
+  private async seek(
+    name: string,
+    stmt: Extract<Stmt, { kind: 'FileStmt' }>,
+    scope: Scope,
+  ): Promise<void> {
+    const file = this.requireOpen(name, stmt.span, 'RANDOM');
+    if (stmt.value === undefined) return;
+    const address = await this.wholeNumber(stmt.value, scope, 'a record address');
+    if (address < 1) {
+      throw this.error('E3082', stmt.value.span, {
+        message: `record address ${address} is not valid`,
+        label: 'addresses start at 1',
+      });
+    }
+    file.recordPointer = address;
+  }
+
+  private async getRecord(
+    name: string,
+    stmt: Extract<Stmt, { kind: 'FileStmt' }>,
+    scope: Scope,
+  ): Promise<void> {
+    const file = this.requireOpen(name, stmt.span, 'RANDOM');
+    const pointer = file.recordPointer;
+    if (pointer === undefined) {
+      throw this.error('E3120', stmt.span, {
+        message: `no record pointer has been set for \`${name}\``,
+        label: 'no SEEK yet',
+        help: `Move the pointer first:\nSEEK "${name}", 1`,
+      });
+    }
+    const target = stmt.target;
+    if (target === undefined) return;
+
+    const cell = await this.resolveLValue(target, scope);
+    if (cell.declared.k !== 'RECORD') {
+      throw this.error('E3119', target.span, {
+        message: `GETRECORD reads a record, but \`${cell.name}\` is ${typeName(cell.declared)}`,
+        label: 'not a record',
+      });
+    }
+
+    const size = this.options.randomFileRecordSize;
+    const bytes = slotBytes(file.buffer ?? new Uint8Array(0), pointer, size);
+    if (bytes === null || isEmptySlot(bytes)) {
+      throw this.error('E3118', stmt.span, {
+        message: `record ${pointer} of \`${name}\` is empty`,
+        label: 'nothing stored there',
+      });
+    }
+
+    const stored = JSON.parse(decodeSlot(bytes)) as StoredRecord;
+    if (stored.__type.toLowerCase() !== cell.declared.name.toLowerCase()) {
+      throw this.error('E3119', stmt.span, {
+        message: `record ${pointer} holds a \`${stored.__type}\`, but \`${cell.name}\` is a \`${cell.declared.name}\``,
+        label: 'wrong record type',
+      });
+    }
+
+    const fresh = await this.makeValueFor(cell.declared, cell.name, scope, stmt.span);
+    if (fresh === undefined || fresh.t !== 'RECORD') return;
+    for (const field of fresh.fields.values()) {
+      const raw = decodeScalar(stored.f[field.name]);
+      if (raw === undefined) continue;
+      field.value = coerceForStore(field.declared, narrowScalar(field.declared, raw));
+    }
+    cell.value = fresh;
+  }
+
+  private async putRecord(
+    name: string,
+    stmt: Extract<Stmt, { kind: 'FileStmt' }>,
+    scope: Scope,
+  ): Promise<void> {
+    const file = this.requireOpen(name, stmt.span, 'RANDOM');
+    const pointer = file.recordPointer;
+    if (pointer === undefined) {
+      throw this.error('E3120', stmt.span, {
+        message: `no record pointer has been set for \`${name}\``,
+        label: 'no SEEK yet',
+        help: `Move the pointer first:\nSEEK "${name}", 1`,
+      });
+    }
+    if (stmt.value === undefined) return;
+
+    const value = await this.evaluate(stmt.value, scope);
+    if (value.t !== 'RECORD') {
+      throw this.error('E3119', stmt.value.span, {
+        message: `PUTRECORD writes a record, but this is ${valueTypeName(value)}`,
+        label: 'not a record',
+      });
+    }
+
+    const size = this.options.randomFileRecordSize;
+    const slot = encodeSlot(encodeRecord(value), size);
+    if (slot === null) {
+      throw this.error('E3117', stmt.span, {
+        message: `a \`${value.typeName}\` does not fit in ${size} bytes`,
+        label: 'record too large',
+        help: 'Raise pseudoLang.randomFileRecordSize, or store less in the record.',
+      });
+    }
+
+    file.buffer = growTo(file.buffer ?? new Uint8Array(0), pointer * size);
+    file.buffer.set(slot, (pointer - 1) * size);
   }
 
   // ------------------------------------------------------------ subprograms
@@ -1036,6 +1348,16 @@ export class Interpreter {
       .map((f) => `${f.name} (line ${f.line})`);
     return err;
   }
+}
+
+/**
+ * JSON has one number type and one string type, so a value read back from a
+ * random file is re-tagged using the field's declared type.
+ */
+function narrowScalar(declared: PType, value: PValue): PValue {
+  if (declared.k === 'INTEGER' && value.t === 'REAL') return int(Math.trunc(value.v));
+  if (declared.k === 'CHAR' && value.t === 'STRING') return char(value.v);
+  return value;
 }
 
 /** Types whose storage DECLARE creates up front rather than leaving unset. */

@@ -1,6 +1,5 @@
 # TODO
 
-- 2026-08-26 08:34: M7 — file handling: text files and random files
 - 2026-08-26 08:34: M8 — OOP: CLASS, INHERITS, NEW, SUPER, PUBLIC/PRIVATE
 - 2026-08-26 08:34: M9 — VS Code extension: TextMate grammar, Run command, snippets, .vsix
 - 2026-08-26 08:34: M10 — debug adapter: breakpoints, step, variables, call stack, INPUT prompts

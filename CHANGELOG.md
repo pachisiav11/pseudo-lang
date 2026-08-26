@@ -32,3 +32,6 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   enumerated types that compare by declaration order, pointer types with `^`
   for address-of and dereference, and set types with DEFINE. Case labels may
   now be a CONSTANT or an enumerated value as well as a literal.
+- M7: file handling. Text files in READ, WRITE and APPEND modes with EOF, and
+  random files with SEEK, GETRECORD and PUTRECORD. A file left open at the end
+  of the program is flushed and warned about rather than silently lost.
