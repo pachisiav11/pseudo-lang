@@ -22,6 +22,11 @@ written for Cambridge IGCSE Computer Science 0478 also run unchanged.
 
 ## Install
 
+> **New to this?** Follow the step-by-step guide at
+> **[pachisiav11.github.io/pseudo-lang](https://pachisiav11.github.io/pseudo-lang/)** —
+> it walks through every menu and covers what to do when things go wrong. The
+> short version follows.
+
 You need two things, both free:
 
 1. **[Visual Studio Code](https://code.visualstudio.com/)**

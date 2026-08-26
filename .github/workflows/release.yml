@@ -57,5 +57,6 @@ jobs:
 
             Prefer a terminal? `code --install-extension pseudo-lang-${{ env.VERSION }}.vsix`
 
-            Full instructions, including what to do if something goes wrong, are in
-            the [README](https://github.com/pachisiav11/pseudo-lang#install).
+            New to this? The step-by-step guide is at
+            https://pachisiav11.github.io/pseudo-lang/ — it walks through every menu
+            and covers what to do when something goes wrong.
