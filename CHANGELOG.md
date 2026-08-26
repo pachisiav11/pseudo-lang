@@ -14,3 +14,7 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   padded `dd/mm/yyyy` date literals, case-sensitive keywords, comments and
   implicit line continuation. Diagnostic catalogue and the rendered error
   format. `pseudo tokens` dumps the stream.
+- M2: the complete AST, a recursive-descent parser with precedence climbing,
+  the tagged-value runtime, storage cells, scopes, and an async tree-walking
+  interpreter. Covers DECLARE, CONSTANT, assignment, INPUT and OUTPUT. `pseudo
+  run`, `pseudo check` and `pseudo ast` work.

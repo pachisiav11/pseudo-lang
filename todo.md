@@ -1,6 +1,5 @@
 # TODO
 
-- 2026-08-26 08:34: M2 — expressions, DECLARE/CONSTANT, assignment, OUTPUT/INPUT, Host, Cell, Scope, async interpreter
 - 2026-08-26 08:34: M3 — control flow: IF, CASE, FOR, REPEAT, WHILE
 - 2026-08-26 08:34: M4 — arrays: 1-D and 2-D, bounds checking, whole-array assignment
 - 2026-08-26 08:34: M5 — subprograms (PROCEDURE/FUNCTION/CALL/RETURN/BYVAL/BYREF) and the eight built-in functions

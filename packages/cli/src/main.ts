@@ -1,7 +1,17 @@
 #!/usr/bin/env node
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { DiagnosticSink, SourceFile, VERSION, lex, renderAll } from '@pseudo-lang/core';
+import {
+  DiagnosticSink,
+  SourceFile,
+  VERSION,
+  lex,
+  parseSource,
+  renderAll,
+  renderDiagnostic,
+  runSource,
+} from '@pseudo-lang/core';
+import { NodeHost } from './node-host';
 
 const USAGE = `pseudo ${VERSION}
 
@@ -47,7 +57,7 @@ function load(path: string): SourceFile {
 }
 
 async function main(argv: string[]): Promise<number> {
-  const { rest } = parseOptions(argv);
+  const { rest, options } = parseOptions(argv);
 
   if (rest.includes('--version') || rest.includes('-v')) {
     process.stdout.write(`pseudo ${VERSION}\n`);
@@ -88,17 +98,47 @@ async function main(argv: string[]): Promise<number> {
       return 0;
     }
 
-    case 'check':
-    case 'ast':
-    case 'run': {
-      const sink = new DiagnosticSink();
-      lex(source, sink);
-      if (sink.hasErrors) {
-        process.stderr.write(`${renderAll(sink.errors, source)}\n`);
+    case 'check': {
+      const parsed = parseSource(source);
+      if (parsed.warnings.length > 0) {
+        process.stderr.write(`${renderAll(parsed.warnings, source)}\n`);
+      }
+      if (parsed.errors.length > 0) {
+        process.stderr.write(`${renderAll(parsed.errors, source)}\n`);
         return 1;
       }
-      process.stderr.write(`pseudo: \`${command}\` is not implemented yet\n`);
-      return 1;
+      process.stdout.write('no problems found\n');
+      return 0;
+    }
+
+    case 'ast': {
+      const parsed = parseSource(source);
+      if (parsed.program === null) {
+        process.stderr.write(`${renderAll(parsed.errors, source)}\n`);
+        return 1;
+      }
+      process.stdout.write(`${JSON.stringify(parsed.program, null, 2)}\n`);
+      return 0;
+    }
+
+    case 'run': {
+      const host = new NodeHost(file, options.seed);
+      try {
+        const result = await runSource(source, host, {
+          strictDeclarations: options.strictDeclarations,
+          maxCallDepth: options.maxDepth,
+        });
+        for (const warning of result.warnings) {
+          process.stderr.write(`${renderDiagnostic(warning, source)}\n`);
+        }
+        if (!result.ok) {
+          process.stderr.write(`${renderAll(result.errors, source)}\n`);
+          return 1;
+        }
+        return 0;
+      } finally {
+        host.dispose();
+      }
     }
 
     default:
