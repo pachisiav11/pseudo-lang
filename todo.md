@@ -1,7 +1,5 @@
 # TODO
 
-- 2026-08-26 08:34: M0 — create pnpm workspace, three packages (core/cli/vscode), tsconfig.base.json, CI workflow
-- 2026-08-26 08:34: M1 — lexer: token.ts, keywords.ts, lexer.ts, spans, E1xxx diagnostics
 - 2026-08-26 08:34: M2 — expressions, DECLARE/CONSTANT, assignment, OUTPUT/INPUT, Host, Cell, Scope, async interpreter
 - 2026-08-26 08:34: M3 — control flow: IF, CASE, FOR, REPEAT, WHILE
 - 2026-08-26 08:34: M4 — arrays: 1-D and 2-D, bounds checking, whole-array assignment

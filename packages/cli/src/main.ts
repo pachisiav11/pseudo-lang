@@ -1,13 +1,118 @@
 #!/usr/bin/env node
-import { VERSION } from '@pseudo-lang/core';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+import { DiagnosticSink, SourceFile, VERSION, lex, renderAll } from '@pseudo-lang/core';
 
-function main(argv: string[]): number {
-  if (argv.includes('--version') || argv.includes('-v')) {
+const USAGE = `pseudo ${VERSION}
+
+usage:
+  pseudo run <file.pseudo>      run a program
+  pseudo check <file.pseudo>    report diagnostics without running
+  pseudo tokens <file.pseudo>   dump the token stream
+  pseudo ast <file.pseudo>      dump the syntax tree as JSON
+  pseudo --version
+
+options:
+  --strict-declarations   require DECLARE before a variable is used
+  --seed <n>              make RAND deterministic
+  --max-depth <n>         limit recursion depth (default 2000)
+`;
+
+export interface Options {
+  strictDeclarations: boolean;
+  seed: number | undefined;
+  maxDepth: number;
+}
+
+export function parseOptions(argv: string[]): { rest: string[]; options: Options } {
+  const rest: string[] = [];
+  const options: Options = { strictDeclarations: false, seed: undefined, maxDepth: 2000 };
+  for (let i = 0; i < argv.length; i += 1) {
+    const arg = argv[i] ?? '';
+    if (arg === '--strict-declarations') options.strictDeclarations = true;
+    else if (arg === '--seed') {
+      i += 1;
+      options.seed = Number(argv[i]);
+    } else if (arg === '--max-depth') {
+      i += 1;
+      options.maxDepth = Number(argv[i]);
+    } else rest.push(arg);
+  }
+  return { rest, options };
+}
+
+function load(path: string): SourceFile {
+  const full = resolve(path);
+  return new SourceFile(path, readFileSync(full, 'utf8'));
+}
+
+async function main(argv: string[]): Promise<number> {
+  const { rest } = parseOptions(argv);
+
+  if (rest.includes('--version') || rest.includes('-v')) {
     process.stdout.write(`pseudo ${VERSION}\n`);
     return 0;
   }
-  process.stdout.write('usage: pseudo <run|check|tokens|ast> <file.pseudo>\n');
-  return 0;
+
+  const command = rest[0];
+  const file = rest[1];
+
+  if (command === undefined || file === undefined) {
+    process.stdout.write(USAGE);
+    return command === undefined ? 0 : 1;
+  }
+
+  let source: SourceFile;
+  try {
+    source = load(file);
+  } catch {
+    process.stderr.write(`pseudo: cannot read ${file}\n`);
+    return 1;
+  }
+
+  switch (command) {
+    case 'tokens': {
+      const sink = new DiagnosticSink();
+      const { tokens } = lex(source, sink);
+      for (const tok of tokens) {
+        const value = tok.value === undefined ? '' : ` = ${JSON.stringify(tok.value)}`;
+        process.stdout.write(
+          `${String(tok.span.line).padStart(4)}:${String(tok.span.col).padStart(3)}  ` +
+            `${tok.kind.padEnd(11)} ${JSON.stringify(tok.text)}${value}\n`,
+        );
+      }
+      if (sink.hasErrors) {
+        process.stderr.write(`\n${renderAll(sink.errors, source)}\n`);
+        return 1;
+      }
+      return 0;
+    }
+
+    case 'check':
+    case 'ast':
+    case 'run': {
+      const sink = new DiagnosticSink();
+      lex(source, sink);
+      if (sink.hasErrors) {
+        process.stderr.write(`${renderAll(sink.errors, source)}\n`);
+        return 1;
+      }
+      process.stderr.write(`pseudo: \`${command}\` is not implemented yet\n`);
+      return 1;
+    }
+
+    default:
+      process.stderr.write(`pseudo: unknown command \`${command}\`\n\n${USAGE}`);
+      return 1;
+  }
 }
 
-process.exitCode = main(process.argv.slice(2));
+main(process.argv.slice(2)).then(
+  (code) => {
+    process.exitCode = code;
+  },
+  (err: unknown) => {
+    process.stderr.write(`pseudo: internal error\n${String(err)}\n`);
+    process.exitCode = 2;
+  },
+);
