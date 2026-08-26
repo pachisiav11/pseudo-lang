@@ -446,7 +446,7 @@ footer .fine strong { color: var(--ink-soft); }
       the same <code>FOR</code> loop, the same arrow.
     </p>
     <div class="cta-row">
-      <a class="btn primary" href="#install">Set it up &mdash; about 5 minutes</a>
+      <a class="btn primary" href="#install">Set it up &mdash; about 2 minutes</a>
       <a class="btn ghost" href="https://github.com/pachisiav11/pseudo-lang">See the code on GitHub</a>
     </div>
 
@@ -473,7 +473,7 @@ footer .fine strong { color: var(--ink-soft); }
 
   <section id="before">
     <h2>What you need first</h2>
-    <p class="section-note">Two things. Both free. You probably already have the first one.</p>
+    <p class="section-note">One thing, and you probably already have it.</p>
 
     <div class="needs">
       <div class="need have">
@@ -486,16 +486,13 @@ footer .fine strong { color: var(--ink-soft); }
         </div>
       </div>
 
-      <div class="need get">
-        <span class="mark">&#8595;</span>
+      <div class="need have">
+        <span class="mark">&#10003;</span>
         <div>
-          <h3>Node.js &mdash; version 20 or later</h3>
-          <p>Go to <a href="https://nodejs.org/">nodejs.org</a> and click the big
-             <span class="ui">LTS</span> button. Run the installer and click Next through every
-             screen. You will never open Node.js yourself &mdash; it just sits there and does the
-             work behind the play button.</p>
-          <p><strong>If VS Code is open right now, close it after installing Node.js.</strong>
-             It only notices the new install when it starts up fresh.</p>
+          <h3>Nothing else</h3>
+          <p>No Python, no Java, no compiler, no account, nothing to set up on the command
+             line. The extension brings its own everything. If a guide ever tells you to install
+             something else to run pseudocode, it is not talking about this one.</p>
         </div>
       </div>
     </div>
@@ -505,7 +502,7 @@ footer .fine strong { color: var(--ink-soft); }
     <h2>Installing the extension</h2>
     <p class="section-note">
       This extension is not in the VS Code Marketplace, so you download one file and add it by
-      hand. It takes about a minute.
+      hand. It takes about a minute, and there is nothing to install afterwards.
     </p>
 
     <div class="os-switch" role="group" aria-label="Choose your operating system">
@@ -613,8 +610,11 @@ footer .fine strong { color: var(--ink-soft); }
             <span class="dots"><i></i><i></i><i></i></span>
             <span class="name">TERMINAL</span>
           </div>
-<pre><span class="cm">What is your name? </span><span class="s">Priya</span>
-<span class="id">Hello, Priya!</span></pre>
+<pre><span class="cm">What is your name? </span>
+<span class="s">Priya</span>
+<span class="id">Hello, Priya!</span>
+
+<span class="cm">[Finished]</span></pre>
         </div>
 
         <div class="callout good">
@@ -630,7 +630,7 @@ footer .fine strong { color: var(--ink-soft); }
 
   <section id="more">
     <h2>Things worth knowing</h2>
-    <p class="section-note">Four features that will save you time once your programs get longer.</p>
+    <p class="section-note">Five things that will save you time once your programs get longer.</p>
 
     <div class="features">
       <div class="feature">
@@ -651,6 +651,12 @@ footer .fine strong { color: var(--ink-soft); }
            indented.</p>
       </div>
       <div class="feature">
+        <h3><span class="g">^C</span> Stopping a runaway program</h3>
+        <p>Written a loop that never ends? Click inside the terminal and press
+           <kbd data-key="mod">Ctrl</kbd> <kbd>C</kbd>. It stops wherever it had got to, and
+           anything the program wrote to a file is still saved.</p>
+      </div>
+      <div class="feature">
         <h3><span class="g">A&#8593;</span> Keywords must be capitals</h3>
         <p><code>IF</code> is a keyword. <code>if</code> is not, and the exam agrees. If a word
            stays grey when you expected it to change colour, check its capitals.</p>
@@ -660,16 +666,15 @@ footer .fine strong { color: var(--ink-soft); }
 
   <section id="trouble">
     <h2>If something goes wrong</h2>
-    <p class="section-note">Almost every problem is one of these five.</p>
+    <p class="section-note">Almost every problem is one of these.</p>
 
     <details>
-      <summary>The terminal says <code>node is not recognised</code></summary>
+      <summary>My program will not stop</summary>
       <div class="details-body">
-        <p>Node.js is missing, or VS Code has not noticed it yet.</p>
-        <p>Install it from <a href="https://nodejs.org/">nodejs.org</a> (the
-           <span class="ui">LTS</span> button), then <strong>close VS Code completely and open it
-           again</strong>. That second part matters more than people expect &mdash; VS Code only
-           looks for Node.js when it starts.</p>
+        <p>A loop whose condition never becomes false will run forever. Click inside the
+           terminal and press <kbd data-key="mod">Ctrl</kbd> <kbd>C</kbd> to stop it.</p>
+        <p>Then look at the condition. A <code>WHILE</code> loop needs something inside it that
+           eventually makes the condition false &mdash; usually the counter it is testing.</p>
       </div>
     </details>
 

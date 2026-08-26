@@ -1,13 +1,20 @@
+import { DEFAULT_RUN_OPTIONS } from '@pseudo-lang/core';
 import * as vscode from 'vscode';
+import { ProgramRunner } from './program-terminal';
 
 let terminal: vscode.Terminal | undefined;
 
 /**
- * Runs the file in a real terminal rather than in the extension host.
+ * Runs the file inside the extension host, writing to a Pseudoterminal.
  *
- * That matters for INPUT: a terminal gives the program genuine keyboard input,
- * which an output-only channel cannot. The M10 debugger takes the other path
- * and prompts through the debug session instead.
+ * The obvious implementation spawns the bundled CLI in a real terminal, and
+ * that is what this used to do. It meant a student had to install Node.js
+ * before the play button worked at all, which is a real barrier for the people
+ * this is for. VS Code already provides a JavaScript runtime for the extension
+ * itself, and a Pseudoterminal delivers genuine keystrokes, so the subprocess
+ * bought nothing that could not be had without it.
+ *
+ * The CLI still ships, for anyone who wants pseudocode outside the editor.
  */
 export async function runFile(
   context: vscode.ExtensionContext,
@@ -21,26 +28,43 @@ export async function runFile(
   }
   if (document.isDirty) await document.save();
 
-  const cli = vscode.Uri.joinPath(context.extensionUri, 'dist', 'pseudo-cli.js').fsPath;
   const config = vscode.workspace.getConfiguration('pseudoLang');
+  const writeEmitter = new vscode.EventEmitter<string>();
 
-  const args = [quote(cli), 'run', quote(document.uri.fsPath)];
-  if (config.get<boolean>('strictDeclarations', false)) args.push('--strict-declarations');
-  const maxDepth = config.get<number>('maxCallDepth', 2000);
-  if (maxDepth !== 2000) args.push('--max-depth', String(maxDepth));
+  const runner = new ProgramRunner(
+    document.uri.fsPath,
+    document.getText(),
+    {
+      strictDeclarations: config.get<boolean>('strictDeclarations', false),
+      maxCallDepth: config.get<number>('maxCallDepth', DEFAULT_RUN_OPTIONS.maxCallDepth),
+      randomFileRecordSize: config.get<number>(
+        'randomFileRecordSize',
+        DEFAULT_RUN_OPTIONS.randomFileRecordSize,
+      ),
+    },
+    (text) => writeEmitter.fire(text),
+  );
 
-  if (terminal === undefined || terminal.exitStatus !== undefined) {
-    terminal = vscode.window.createTerminal({
-      name: 'Pseudocode',
-      iconPath: new vscode.ThemeIcon('play'),
-    });
-    context.subscriptions.push(terminal);
-  }
+  const pty: vscode.Pseudoterminal = {
+    onDidWrite: writeEmitter.event,
+    // onDidClose is deliberately absent. Firing it ends the pty, and VS Code
+    // takes an exited terminal away along with everything the program printed
+    // -- which is the one thing the reader wanted to see. The terminal stays
+    // until the next run replaces it, or until it is closed by hand.
+    open: () => {
+      void runner.run();
+    },
+    close: () => runner.stop(),
+    handleInput: (data) => runner.handleInput(data),
+  };
 
+  // A pty runs one program and is then spent, so a re-run needs a fresh one.
+  terminal?.dispose();
+  terminal = vscode.window.createTerminal({
+    name: 'Pseudocode',
+    iconPath: new vscode.ThemeIcon('play'),
+    pty,
+  });
+  context.subscriptions.push(terminal);
   terminal.show(true);
-  terminal.sendText(`node ${args.join(' ')}`);
-}
-
-function quote(value: string): string {
-  return /[\s"']/.test(value) ? `"${value.replace(/"/g, '\\"')}"` : value;
 }

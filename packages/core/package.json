@@ -1,11 +1,13 @@
 {
   "name": "@pseudo-lang/core",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Lexer, parser and interpreter for Cambridge 9618 pseudocode",
   "license": "MIT",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit"

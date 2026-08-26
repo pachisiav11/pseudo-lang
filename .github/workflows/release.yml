@@ -45,7 +45,7 @@ jobs:
             ## Install
 
             You need [Visual Studio Code](https://code.visualstudio.com/) and
-            [Node.js 20 or later](https://nodejs.org/). Both are free.
+            nothing else. It is free.
 
             1. Download **`pseudo-lang-${{ env.VERSION }}.vsix`** from the Assets list below.
             2. Open VS Code and press `Ctrl` `Shift` `X` (`Cmd` `Shift` `X` on a Mac).

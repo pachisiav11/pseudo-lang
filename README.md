@@ -27,18 +27,16 @@ written for Cambridge IGCSE Computer Science 0478 also run unchanged.
 > it walks through every menu and covers what to do when things go wrong. The
 > short version follows.
 
-You need two things, both free:
+You need **[Visual Studio Code](https://code.visualstudio.com/)** and nothing
+else. No runtime to install, no command line, no account.
 
-1. **[Visual Studio Code](https://code.visualstudio.com/)**
-2. **[Node.js 20 or later](https://nodejs.org/)** — take the "LTS" download
-
-Then install the extension. It is not on the Marketplace, so you download one
-file and add it to VS Code by hand. It takes about a minute.
+The extension is not on the Marketplace, so you download one file and add it to
+VS Code by hand. It takes about a minute.
 
 ### Step 1 — download the extension
 
 Go to the **[latest release](https://github.com/pachisiav11/pseudo-lang/releases/latest)**
-and download **`pseudo-lang-0.1.0.vsix`** from the Assets list at the bottom.
+and download **`pseudo-lang-0.2.0.vsix`** from the Assets list at the bottom.
 
 Save it anywhere you like. Your Downloads folder is fine.
 
@@ -58,7 +56,7 @@ VS Code will say the extension was installed.
 <summary>Or install it from a terminal instead</summary>
 
 ```bash
-code --install-extension pseudo-lang-0.1.0.vsix
+code --install-extension pseudo-lang-0.2.0.vsix
 ```
 
 Run this from the folder you saved the file in. On a Mac, if `code` is not
@@ -90,6 +88,7 @@ That is everything. You are set up.
 | --- | --- |
 | Run the open file | the **▷** button, top right |
 | Debug it — breakpoints, stepping, variables | **`F5`** |
+| Stop a program that will not end | **`Ctrl` `C`** in the terminal |
 | Type the `←` arrow | **`Alt` `-`**, or just type `<-` and save |
 | See mistakes before running | save the file, then look at the Problems panel |
 
@@ -99,16 +98,14 @@ You never have to type `←`. Type `<-` and it becomes `←` when you save.
 
 | What you see | What to do |
 | --- | --- |
-| `node: command not found` in the terminal | Node.js is not installed, or VS Code was open when you installed it. Install [Node.js](https://nodejs.org/), then close and reopen VS Code. |
 | No colours in a `.pseudo` file | Check the file really ends in `.pseudo`. Keywords only colour in **UPPER CASE** — a lower-case `if` staying grey means the keyword is wrong. |
 | The **▷** button is missing | The file is not recognised as pseudocode. Save it with a `.pseudo` ending. |
-
-The debugger (`F5`) runs inside VS Code and does not need Node.js. Only the
-**▷** Run button does.
+| A program that never stops | Click inside the terminal and press `Ctrl` `C`. |
 
 ## Use it from the command line
 
-The extension is not required — the interpreter runs on its own.
+Optional, and separate from the extension. This is the one part that wants
+Node.js, because it is a command-line program; the editor does not.
 
 ```bash
 git clone https://github.com/pachisiav11/pseudo-lang.git
@@ -176,7 +173,7 @@ for *9618 Pseudocode Guide for Teachers (for examination from 2027)*.
 
 ## Status
 
-All eleven milestones are complete. See [BUILD_GUIDE.md](BUILD_GUIDE.md) for the
+All eleven milestones are complete, and the Run button no longer needs Node.js. See [BUILD_GUIDE.md](BUILD_GUIDE.md) for the
 full specification, and [CHANGELOG.md](CHANGELOG.md) for what landed when.
 
 ## Development
@@ -190,7 +187,7 @@ pnpm test
 `pnpm package` builds the `.vsix` into `packages/vscode/`, if you would rather
 build it than download it.
 
-The suite has 324 tests. `tests/conformance/` holds one directory per example in
+The suite has 339 tests. `tests/conformance/` holds one directory per example in
 the Cambridge guide, each with its program and its expected output;
 `tests/errors/` pins the full rendered text of a diagnostic, caret line and all,
 so a change to the wording is a visible diff rather than a silent regression.

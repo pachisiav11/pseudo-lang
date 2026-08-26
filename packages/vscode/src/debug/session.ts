@@ -38,7 +38,7 @@ import {
 import type { DebugProtocol } from '@vscode/debugprotocol';
 import { readFile } from 'node:fs/promises';
 import { basename } from 'node:path';
-import { DebugHost, HaltSignal } from './host';
+import { ExtensionHost, HaltSignal } from '../host';
 
 const THREAD_ID = 1;
 
@@ -172,7 +172,7 @@ export class PseudoDebugSession extends LoggingDebugSession {
   }
 
   private async execute(program: Program, args: LaunchArguments): Promise<void> {
-    const host = new DebugHost(this.programPath, {
+    const host = new ExtensionHost(this.programPath, {
       write: (text) => {
         this.sendEvent(new OutputEvent(text, 'stdout'));
       },

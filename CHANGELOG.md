@@ -4,6 +4,28 @@ All notable changes to this project are documented in this file. The format
 follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and this
 project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0] - 2026-08-26
+
+### Changed
+
+- The **▷** Run button no longer needs Node.js. The interpreter runs inside the
+  extension host and writes to a VS Code `Pseudoterminal`, rather than spawning
+  the bundled CLI as a subprocess. Installing the extension is now the only step
+  — nothing else to download, and no command line to touch.
+- Run and Debug share one `ExtensionHost`. The debugger is the same host with a
+  `beforeStatement` hook that parks; running a file leaves the hook out.
+- The extension no longer bundles `dist/pseudo-cli.js`. The CLI still ships as
+  its own package for use outside the editor.
+
+### Fixed
+
+- A program in a tight loop starved the event loop, so keystrokes were never
+  delivered — which made Ctrl+C and the debugger's **Pause** button unreachable
+  in exactly the situation they exist for. The host now hands the event loop
+  back periodically.
+- Arrow keys typed at an `INPUT` prompt left `[D` and friends in the answer.
+  Escape sequences are consumed whole.
+
 ## [0.1.0] - 2026-08-26
 
 ### Added

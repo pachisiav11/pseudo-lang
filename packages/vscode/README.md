@@ -18,8 +18,7 @@ IGCSE 0478 pseudocode is a subset of 9618, so IGCSE programs run here unchanged.
 
 ## Getting started
 
-**You need [Node.js 20 or later](https://nodejs.org/) on your machine** for the
-Run button. The debugger runs inside VS Code and does not need it.
+Nothing to install beyond this extension. Everything runs inside VS Code.
 
 Create a file called `hello.pseudo`:
 
@@ -74,9 +73,9 @@ A breakpoint on a blank line or on `ENDIF` moves down to the next real statement
 
 | What you see | What to do |
 | --- | --- |
-| `node: command not found` in the terminal | Node.js is not installed, or VS Code was open when you installed it. Install [Node.js](https://nodejs.org/), then close and reopen VS Code. |
 | No colours in the file | Check it really ends in `.pseudo`. Keywords only colour in **UPPER CASE** — a lower-case `if` staying grey means the keyword is wrong. |
 | The ▷ button is missing | The file is not recognised as pseudocode. Save it with a `.pseudo` ending. |
+| A program that never stops | Click inside the terminal and press `Ctrl` `C`. |
 
 ## What is supported
 

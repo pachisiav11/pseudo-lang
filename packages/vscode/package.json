@@ -2,7 +2,7 @@
   "name": "pseudo-lang",
   "displayName": "Pseudocode (Cambridge 9618)",
   "description": "Run and debug the pseudocode defined in the Cambridge International AS & A Level Computer Science 9618 pseudocode guide.",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "publisher": "pseudo-lang",
   "license": "MIT",
   "repository": {

@@ -15,3 +15,4 @@
 - Added: 2026-08-26 08:34 | Completed: 2026-08-26 13:50 | M11 — README, docs/DEVIATIONS.md, full conformance suite, GitHub release workflow
 - Added: 2026-08-26 08:34 | Completed: 2026-08-26 13:50 | Decide whether to ship the Cambridge PDF in the repo or replace it with a link + checksum — decided: not redistributed, README links to Cambridge
 - Added: 2026-08-26 14:35 | Completed: 2026-08-26 14:58 | Publish the install guide as a GitHub Pages site and link it from the README
+- Added: 2026-08-26 17:20 | Completed: 2026-08-26 17:52 | Run the interpreter in-process behind a VS Code Pseudoterminal so the extension no longer needs Node.js; release 0.2.0

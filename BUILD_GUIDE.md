@@ -1431,17 +1431,20 @@ The `for` snippet uses the same placeholder id `${1:i}` twice so typing the cont
 
 ### 18.5 The Run command
 
-**[DECISION]** `pseudoLang.run` runs the program in a real VS Code terminal:
+**[DECISION]** `pseudoLang.run` runs the program **in the extension host**, writing to a `vscode.Pseudoterminal`.
 
-```ts
-terminal.sendText(`node ${cliPath} run ${filePath}`);
-```
+Two earlier designs were tried and rejected. The guide originally specified `vscode.debug.startDebugging(..., { noDebug: true })`, reusing the M10 adapter; that routes `INPUT` through a modal `showInputBox` per prompt, which is miserable for anything reading more than one value. M9 then shipped a real terminal running `node ${cliPath} run ${filePath}`, with `esbuild.mjs` bundling a second entry point `dist/pseudo-cli.js`. That gave `INPUT` a genuine keyboard — but it also meant a student had to install Node.js before the play button did anything at all, which is a real barrier for the people this is for.
 
-`esbuild.mjs` bundles a second entry point, `dist/pseudo-cli.js`, so the extension ships its own copy of the CLI and does not depend on a global install.
+A `Pseudoterminal` is a terminal VS Code lets the extension drive directly: the extension writes the bytes and receives the keystrokes, and no shell or subprocess is involved. It keeps everything the real terminal was chosen for and costs nothing to have. VS Code is already a JavaScript runtime; the interpreter can simply run in it.
 
-The guide originally specified `vscode.debug.startDebugging(..., { noDebug: true })` instead, reusing the M10 debug adapter. A terminal is better for the one thing that matters most here: `INPUT`. A terminal gives the program genuine line-buffered keyboard input, with history, editing and Ctrl+C, which is what a student expects from a program that asks a question. Routing `INPUT` through a debug session means a modal `showInputBox` per prompt, which is worse for anything that reads more than one value. The terminal path also makes M9 self-contained — the Run command works before the debug adapter exists.
+Three consequences worth knowing before writing it:
 
-M10 still registers the adapter, so `F5` and `Ctrl+F5` work as well; the ▷ button and **Pseudocode: Run File** use the terminal.
+- **The extension owns the line discipline.** A pty is raw. Nothing is echoed, `
+` alone drops a line without returning the carriage, backspace must be painted as ` `, and escape sequences must be swallowed as a small state machine — an ESC arrives as `ESC [ D`, and dropping only the ESC leaves `[D` in the middle of the answer. Keep this in a class with no `vscode` import (`program-terminal.ts`) so it can be tested, the same way `session.ts` stays testable.
+- **`beforeStatement` must yield to the event loop periodically.** Awaiting a hook only drains microtasks, so a program in a tight loop never reaches the phase where a keystroke is delivered. Without an occasional `setTimeout(0)`, Ctrl+C and the debugger's Pause button — the two things that exist precisely for an endless loop — are the two things an endless loop makes unreachable. Put the yield in the shared `Host`, so Run and Debug both get it.
+- **Do not fire `onDidClose`.** It ends the pty, and VS Code takes an exited terminal away along with everything the program printed, which is the one thing the reader wanted to see. Print a dim `[Finished]` / `[Stopped]` / `[Failed]` line instead and leave the terminal standing. A pty runs one program and is then spent, so dispose the previous one when re-running.
+
+Run and Debug now share one `ExtensionHost`; the debugger is the same thing with a `beforeStatement` that parks. The CLI still ships for anyone who wants pseudocode outside the editor, but nothing in the extension depends on it.
 
 Save the file first if dirty. If the document is untitled, prompt to save — file-relative paths in `OPENFILE` need a real location.
 
@@ -1512,7 +1515,7 @@ async beforeStatement(node: Stmt, stack: readonly Frame[]): Promise<void> {
 
 **[DECISION]** `DebugHost.readLine()` sends a **custom DAP event** `pseudoInputRequest`; the extension listens via `onDidReceiveDebugSessionCustomEvent`, shows `vscode.window.showInputBox({ prompt: 'INPUT' })`, and replies with a `pseudoInputResponse` custom request carrying the line. Cancelling the box replies with `null`, which the interpreter sees as end of input.
 
-The adapter never handles `noDebug`. Running without debugging is the Run command from [§18.5](#185-the-run-command), which spawns the bundled CLI in a terminal — so Run genuinely uses the CLI and Debug uses the in-process interpreter. Two paths, but each is simple and they share all of `core`.
+The adapter never handles `noDebug`. Running without debugging is the Run command from [§18.5](#185-the-run-command), which drives a `Pseudoterminal` instead of a debug session. Both run the interpreter in the extension host against the same `ExtensionHost`; the only difference is that the debugger supplies a `beforeStatement` that parks and the Run command does not.
 
 **Ordering.** `setBreakpoints` needs the statement lines, which only exist once `launchRequest` has parsed the program, and a client may send it before the launch response arrives. `launchRequest` resolves a `parseDone` promise as soon as the lines are known — including on the failure paths — and `setBreakPointsRequest` awaits it.
 
